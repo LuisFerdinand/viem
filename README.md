@@ -34,6 +34,17 @@ Open http://localhost:3000 for the site and http://localhost:3000/dashboard for 
 If `DATABASE_URL` is missing or Neon is unreachable, the dashboard still works on in-memory demo data and shows an
 "Offline demo mode" banner. An empty database is seeded automatically on first load.
 
+## Deploying to Vercel
+
+1. Push the repo to GitHub and import it at [vercel.com/new](https://vercel.com/new) — the Next.js preset needs no changes.
+2. Under **Settings → Environment Variables**, add `DATABASE_URL` (Neon *pooled* connection string) and, if you use a
+   custom domain, `NEXT_PUBLIC_SITE_URL` (e.g. `https://viem.tl`). Without it the Vercel production domain is used.
+3. Run `npm run db:migrate` once against that database (locally, with the same `DATABASE_URL` in `.env.local`).
+   Demo data is seeded automatically on the first dashboard load.
+
+The Neon integration in the Vercel marketplace can also provision the database and set `DATABASE_URL` for you.
+Without a database the site still deploys and the dashboard runs in "Offline demo mode".
+
 ## How the dashboard demo works
 
 **Sensor readings are simulated in the browser and never stored.** While the dashboard is open, every unit takes a
