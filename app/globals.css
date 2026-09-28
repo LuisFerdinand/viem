@@ -1,26 +1,180 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * VIEM design tokens — "Forest Green" palette with white.
+ *   #406D61 · #224B40 · #133129 · #081F1C · #021010  (from the brand moodboard)
+ *   + a fresh leaf-green accent taken from the VIEM logo.
+ * Text/background pairs used in the UI are checked to WCAG AA (≥ 4.5:1).
+ */
+@theme {
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+  --color-forest-50: #f2f7f4;
+  --color-forest-100: #e3eee8;
+  --color-forest-200: #c5dbd0;
+  --color-forest-300: #9dbfb0;
+  --color-forest-400: #6f9a8b;
+  --color-forest-500: #406d61;
+  --color-forest-600: #325c51;
+  --color-forest-700: #224b40;
+  --color-forest-800: #133129;
+  --color-forest-900: #081f1c;
+  --color-forest-950: #021010;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  --color-leaf-50: #f3f9ea;
+  --color-leaf-100: #e3f1cc;
+  --color-leaf-200: #c9e59f;
+  --color-leaf-300: #aed46f;
+  --color-leaf-400: #95c24a;
+  --color-leaf-500: #7aa832;
+  --color-leaf-600: #5f8625;
+  --color-leaf-700: #4a6820;
+
+  --color-sand-50: #faf8f2;
+  --color-sand-100: #f3efe3;
+
+  --color-water-50: #edf5f9;
+  --color-water-100: #d6e9f2;
+  --color-water-500: #2c7da0;
+  --color-water-700: #1b5570;
+
+  --color-ink: #0b1f1b;
+  --color-muted: #4a6a61;
+
+  --color-ok-50: #e8f5ee;
+  --color-ok-500: #22935d;
+  --color-ok-700: #17693f;
+  --color-warn-50: #fdf5e4;
+  --color-warn-500: #d99315;
+  --color-warn-700: #92580b;
+  --color-crit-50: #fdecea;
+  --color-crit-500: #d8452f;
+  --color-crit-700: #b42318;
+
+  --radius-4xl: 2rem;
+
+  --shadow-soft: 0 1px 2px rgb(2 16 16 / 0.04), 0 10px 30px -14px rgb(2 16 16 / 0.18);
+  --shadow-lift: 0 2px 4px rgb(2 16 16 / 0.05), 0 22px 48px -20px rgb(2 16 16 / 0.35);
+
+  --ease-soft: cubic-bezier(0.22, 1, 0.36, 1);
+
+  --animate-pulse-ring: pulse-ring 2s var(--ease-soft) infinite;
+  --animate-spin-slow: spin 3s linear infinite;
+  --animate-flow: flow 1.6s linear infinite;
+  --animate-toast-in: toast-in 240ms var(--ease-soft);
+
+  @keyframes pulse-ring {
+    0% { box-shadow: 0 0 0 0 currentColor; opacity: 1; }
+    70% { box-shadow: 0 0 0 7px transparent; opacity: 0.9; }
+    100% { box-shadow: 0 0 0 0 transparent; opacity: 1; }
+  }
+  @keyframes flow {
+    to { stroke-dashoffset: -24; }
+  }
+  @keyframes toast-in {
+    from { opacity: 0; transform: translateY(8px) scale(0.98); }
+    to { opacity: 1; transform: none; }
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-padding-top: 5.5rem;
+    scroll-behavior: smooth;
+  }
+  body {
+    background: #fff;
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    text-rendering: optimizeLegibility;
+  }
+  ::selection {
+    background: var(--color-leaf-200);
+    color: var(--color-forest-950);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-leaf-500);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  select,
+  label[for] {
+    cursor: pointer;
+  }
+  button,
+  a {
+    touch-action: manipulation;
+  }
+  input[type="number"] {
+    font-variant-numeric: tabular-nums;
+  }
+  /* Prevent "grid blowout": let grid children shrink below their content's
+     min-content width (long nowrap text) instead of widening the page. */
+  .grid > * {
+    min-width: 0;
+  }
+}
+
+@utility container-page {
+  width: 100%;
+  max-width: 80rem;
+  margin-inline: auto;
+  padding-inline: 1.25rem;
+  @media (width >= 40rem) {
+    padding-inline: 2rem;
+  }
+}
+
+@utility text-balance {
+  text-wrap: balance;
+}
+
+@utility tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@utility eyebrow {
+  font-size: 0.75rem;
+  line-height: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* Scroll-reveal with CSS scroll-driven animations. Browsers without support
+   simply show the content — nothing is ever hidden behind JavaScript. */
+@supports (animation-timeline: view()) {
+  @media (prefers-reduced-motion: no-preference) {
+    .reveal {
+      animation: reveal-up linear both;
+      animation-timeline: view();
+      animation-range: entry 0% entry 55%;
+    }
+  }
+}
+@keyframes reveal-up {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Recharts: keep focus rings off SVG wrappers (tooltips remain keyboard-accessible via the data tables). */
+.recharts-wrapper:focus,
+.recharts-surface:focus {
+  outline: none;
 }
