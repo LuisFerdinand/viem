@@ -2,7 +2,7 @@
 
 import { BatteryCharging, BatteryLow, BatteryMedium, CloudOff, Gauge, SatelliteDish, Sun, Zap } from "lucide-react";
 import Link from "next/link";
-import { ACTUATORS, SENSORS, tdsFromEc, formatSensor, type ActuatorKind, type SensorKey } from "@/lib/domain";
+import { ACTUATORS, SENSORS, SENSOR_GUIDE, tdsFromEc, formatSensor, type ActuatorKind, type SensorKey } from "@/lib/domain";
 import { BYTES_PER_READING, SCENARIOS, type ControlReason } from "@/lib/sim/engine";
 import type { Snapshot, UnitLive } from "@/lib/sim/store";
 import type { ActuatorDTO, ThresholdDTO } from "@/lib/types";
@@ -29,6 +29,7 @@ export function SensorTile({ sensor, live, threshold, href }: { sensor: SensorKe
         </p>
         <StatusBadge status={status} />
       </div>
+      <p className="mt-2 text-xs leading-relaxed text-muted">{SENSOR_GUIDE[sensor].purpose}</p>
       <p className="mt-3 flex items-baseline gap-1.5">
         <span className="font-display text-[2rem] leading-none font-medium text-forest-950 tabular">{formatSensor(sensor, value)}</span>
         <span className="text-sm text-muted">{meta.unit === "pH" ? "" : meta.unit}</span>

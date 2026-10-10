@@ -11,6 +11,8 @@ import {
   Database,
   Info,
   LayoutDashboard,
+  BookOpen,
+  Library,
   LineChart,
   Menu,
   OctagonAlert,
@@ -36,8 +38,10 @@ const NAV: { href: string; label: string; icon: LucideIcon }[] = [
   { href: "/dashboard/sensors", label: "Live sensors", icon: LineChart },
   { href: "/dashboard/controls", label: "Controls", icon: SlidersHorizontal },
   { href: "/dashboard/automation", label: "Automation & alarms", icon: Workflow },
+  { href: "/dashboard/presets", label: "Preset master data", icon: Library },
   { href: "/dashboard/alerts", label: "Alerts", icon: Bell },
   { href: "/dashboard/harvest", label: "Harvest & buy-back", icon: Sprout },
+  { href: "/dashboard/ledger", label: "Buku Besar", icon: BookOpen },
   { href: "/dashboard/assistant", label: "Tulun VIEM", icon: Bot },
   { href: "/dashboard/activity", label: "Activity & settings", icon: Activity },
 ];
@@ -182,7 +186,7 @@ export function DashboardShell({ children }: { children: ReactNode }) {
   }, [drawer]);
 
   return (
-    <div className="min-h-dvh bg-[#f5f8f6]">
+    <div className="dashboard min-h-dvh bg-[#f4f6f8]">
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 lg:block">
         <Sidebar />
       </aside>

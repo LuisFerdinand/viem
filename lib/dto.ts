@@ -97,4 +97,5 @@ export const toHarvest = (r: Row<typeof s.harvests>): HarvestDTO => ({
   buyer: r.buyer,
   status: r.status,
   harvestedAt: r.harvestedAt,
+  paidAt: r.paidAt,
 });

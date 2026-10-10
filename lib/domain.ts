@@ -20,6 +20,21 @@ export function isSensorKey(v: string): v is SensorKey {
 
 export type SensorGroup = "climate" | "water";
 
+export const SENSOR_CATEGORIES = [
+  { id: "basic", label: "Basic monitoring", description: "Everyday climate and tank checks for reliable farm operations.", sensors: ["airTemp", "humidity", "waterLevel"] },
+  { id: "fish", label: "Fish health", description: "Track the oxygen and temperature conditions that support fish welfare.", sensors: ["waterTemp", "do"] },
+  { id: "advanced", label: "Advanced water quality", description: "Monitor acidity and dissolved nutrients in the shared growing loop.", sensors: ["ph", "ec"] },
+] as const;
+export const SENSOR_GUIDE: Record<SensorKey, { purpose: string; action: string; care: string }> = {
+  airTemp: { purpose: "Plant climate · identifies heat or cold stress above the grow beds.", action: "Check shading and ventilation when temperatures move outside the crop's range.", care: "Keep the probe shaded and away from direct sun." },
+  humidity: { purpose: "Plant climate · helps operators spot dry air and persistent damp conditions.", action: "Inspect irrigation in dry conditions; improve airflow when humidity stays high.", care: "Keep the sensor ventilated and protect it from splashes." },
+  waterLevel: { purpose: "Tank safety · protects pumps from dry running and helps detect leaks or overflow.", action: "Check the water supply, pipes and drains before running the refill pump.", care: "Keep the ultrasonic sensor's path to the water clear." },
+  waterTemp: { purpose: "Fish health · tracks thermal stress and conditions in the fish tank.", action: "Inspect fish behavior, shading and circulation when the tank is too warm or cold.", care: "Keep the submerged probe clean and compare it with a reference thermometer." },
+  do: { purpose: "Fish health · measures oxygen available to fish and plant roots.", action: "Check aeration immediately when oxygen is low; inspect air hoses and power.", care: "Calibrate and service the oxygen probe according to its manufacturer." },
+  ph: { purpose: "Water chemistry · supports nutrient availability, fish welfare and the biofilter.", action: "Confirm unusual readings with a manual test and ask the agronomist before adjusting the loop.", care: "Calibrate with buffer solutions and keep the probe stored correctly." },
+  ec: { purpose: "Plant nutrition · estimates dissolved salts; EC does not identify individual nutrients.", action: "Check nutrient inputs and water dilution. TDS shown here is an estimate using the 500 scale.", care: "Clean and calibrate the conductivity probe with a reference solution." },
+};
+
 export interface SensorMeta {
   key: SensorKey;
   label: string;
@@ -189,11 +204,17 @@ export interface Preset {
   label: string;
   description: string;
   values: Record<SensorKey, ThresholdValues>;
+  crop: string;
+  stage: string;
+  system: "aquaponics" | "hydroponics" | "nursery";
+  rules: { actuator: ActuatorKind; sensor: SensorKey; condition: "below" | "above"; onValue: number; offValue: number; enabled: boolean }[];
 }
 
 export const PRESETS: Preset[] = [
   {
     id: "aquaponics-tilapia",
+    crop: "Tilapia + leafy greens", stage: "Grow-out", system: "aquaponics",
+    rules: [{ actuator: "aeration", sensor: "do", condition: "below", onValue: 5.5, offValue: 7.2, enabled: true }, { actuator: "pump", sensor: "waterLevel", condition: "below", onValue: 45, offValue: 85, enabled: true }],
     label: "Tilapia + leafy greens",
     description: "Default aquaponic loop — fish and plants share one water.",
     values: {
@@ -208,6 +229,8 @@ export const PRESETS: Preset[] = [
   },
   {
     id: "nft-greens",
+    crop: "Lettuce, pak choi, kangkung", stage: "Vegetative", system: "hydroponics",
+    rules: [{ actuator: "irrigation", sensor: "humidity", condition: "below", onValue: 50, offValue: 65, enabled: true }, { actuator: "circulation", sensor: "waterTemp", condition: "above", onValue: 26, offValue: 24, enabled: true }],
     label: "NFT leafy greens",
     description: "Hydroponic channels for lettuce, pak choi and kangkung.",
     values: {
@@ -222,6 +245,8 @@ export const PRESETS: Preset[] = [
   },
   {
     id: "fingerling-nursery",
+    crop: "Tilapia fingerlings", stage: "Nursery", system: "nursery",
+    rules: [{ actuator: "aeration", sensor: "do", condition: "below", onValue: 6, offValue: 8, enabled: true }],
     label: "Fingerling nursery",
     description: "Tighter oxygen and temperature limits for young fish.",
     values: {
@@ -236,6 +261,10 @@ export const PRESETS: Preset[] = [
   },
 ];
 
+PRESETS.push(
+  { ...PRESETS[1], id: "lettuce-vegetative", label: "Lettuce · vegetative", crop: "Lettuce", stage: "Vegetative", description: "Illustrative lettuce alarm profile for a separate hydroponic loop. Review locally before use.", values: { ...PRESETS[1].values, ec: { min: 1.2, max: 1.8, criticalMin: 0.8, criticalMax: 2.4 } } },
+  { ...PRESETS[1], id: "basil-vegetative", label: "Basil · vegetative", crop: "Basil", stage: "Vegetative", description: "Illustrative basil alarm profile for a separate hydroponic loop. Review locally before use.", values: { ...PRESETS[1].values, airTemp: { min: 20, max: 30, criticalMin: 15, criticalMax: 35 } } },
+);
 export const DEFAULT_PRESET = PRESETS[0];
 
 export type Severity = "warning" | "critical";

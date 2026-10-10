@@ -7,6 +7,7 @@ import type {
   HarvestStatus,
   SensorKey,
   Severity,
+  Preset,
 } from "./domain";
 
 /** Plain, serialisable shapes passed from the server to the dashboard. */
@@ -99,6 +100,20 @@ export interface HarvestDTO {
   buyer: string;
   status: HarvestStatus;
   harvestedAt: string;
+  paidAt: string | null;
+}
+
+export const LEDGER_CATEGORIES = ["Seeds & seedlings", "Fish feed", "Nutrients", "Equipment", "Maintenance", "Transport", "Labor", "Utilities", "Other income", "Other expense"] as const;
+export interface LedgerDTO {
+  id: number;
+  unitId: string;
+  type: "income" | "expense";
+  category: string;
+  amountCents: number;
+  date: string;
+  description: string;
+  counterparty: string;
+  reference: string;
 }
 
 export interface DashboardData {
@@ -111,6 +126,8 @@ export interface DashboardData {
   alerts: AlertDTO[];
   events: EventDTO[];
   harvests: HarvestDTO[];
+  ledger: LedgerDTO[];
+  presets: Preset[];
 }
 
 export type ActionResult<T> = { ok: true; data: T } | { ok: false; error: string };

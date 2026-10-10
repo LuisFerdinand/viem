@@ -3,6 +3,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   pgTable,
   real,
   serial,
@@ -10,6 +11,7 @@ import {
   timestamp,
   uniqueIndex,
 } from "drizzle-orm/pg-core";
+import type { Preset } from "../domain";
 
 /**
  * VIEM demo schema.
@@ -141,7 +143,27 @@ export const harvests = pgTable(
     buyer: text("buyer").notNull(),
     status: text("status", { enum: ["logged", "collected", "paid"] }).notNull().default("logged"),
     harvestedAt: date("harvested_at", { mode: "string" }).notNull(),
+    paidAt: date("paid_at", { mode: "string" }),
     createdAt: createdAt(),
   },
   (t) => [index("harvests_unit_idx").on(t.unitId)],
 );
+
+export const automationPresets = pgTable("automation_presets", {
+  id: text("id").primaryKey(),
+  definition: jsonb("definition").$type<Preset>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+});
+
+export const ledgerEntries = pgTable("ledger_entries", {
+  id: serial("id").primaryKey(),
+  unitId: text("unit_id").notNull().references(() => units.id, { onDelete: "cascade" }),
+  type: text("type", { enum: ["income", "expense"] }).notNull(),
+  category: text("category").notNull(),
+  amountCents: integer("amount_cents").notNull(),
+  date: date("date", { mode: "string" }).notNull(),
+  description: text("description").notNull(),
+  counterparty: text("counterparty").notNull().default(""),
+  reference: text("reference").notNull().default(""),
+  createdAt: createdAt(),
+}, (t) => [index("ledger_unit_date_idx").on(t.unitId, t.date)]);

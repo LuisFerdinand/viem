@@ -2,7 +2,7 @@
 
 import { Download } from "lucide-react";
 import { useState } from "react";
-import { SENSOR_KEYS, SENSORS, formatSensor, tdsFromEc } from "@/lib/domain";
+import { SENSOR_KEYS, SENSORS, SENSOR_CATEGORIES, SENSOR_GUIDE, formatSensor, tdsFromEc } from "@/lib/domain";
 import { TICK_MS } from "@/lib/sim/engine";
 import { selectThresholds, selectUnit } from "@/lib/sim/store";
 import { cn, fmtTimeSec } from "@/lib/utils";
@@ -25,6 +25,7 @@ export function SensorsView() {
   const live = snap.live[unit.id];
   const thresholds = selectThresholds(snap);
   const [range, setRange] = useState<Range>("60");
+  const [category, setCategory] = useState("all");
   if (!live) return null;
 
   const points = (Number(range) * 60_000) / TICK_MS;
@@ -63,8 +64,12 @@ export function SensorsView() {
         }
       />
 
+      <div className="grid gap-3 sm:grid-cols-3" aria-label="Sensor categories">
+        {SENSOR_CATEGORIES.map((c) => <button key={c.id} type="button" aria-pressed={category === c.id} onClick={() => setCategory(category === c.id ? "all" : c.id)} className={cn("rounded-xl border p-4 text-left transition-colors", category === c.id ? "border-forest-600 bg-forest-800 text-white" : "border-forest-100 bg-white text-forest-900 hover:border-forest-300")}><span className="block text-sm font-semibold">{c.label} <span className="opacity-60">· {c.sensors.length}</span></span><span className="mt-1 block text-xs leading-relaxed opacity-75">{c.description}</span></button>)}
+      </div>
+      <p className="text-xs text-muted">{category === "all" ? "Showing all 7 sensors. Select a category to focus your view." : "Select the active category again to show all sensors."}</p>
       <div className="grid gap-5 xl:grid-cols-2">
-        {SENSOR_KEYS.map((k) => {
+        {SENSOR_KEYS.filter((k) => category === "all" || SENSOR_CATEGORIES.find((c) => c.id === category)?.sensors.some((s) => s === k)).map((k) => {
           const meta = SENSORS[k];
           const Icon = SENSOR_ICON[k];
           const vals = data.map((r) => r[k]);
@@ -76,14 +81,14 @@ export function SensorsView() {
             <Card
               key={k}
               id={k}
-              className={cn("scroll-mt-24", SENSOR_KEYS.length % 2 === 1 && k === SENSOR_KEYS[SENSOR_KEYS.length - 1] && "xl:col-span-2")}
+              className="scroll-mt-24"
               title={
-                <span className="flex items-center gap-2">
+                  <span className="flex flex-wrap items-center gap-2">
                   <Icon className="size-4" style={{ color: meta.color }} aria-hidden="true" /> {meta.label}
-                  {meta.added && <Pill tone="water">From the proposal</Pill>}
+                  <Pill>{SENSOR_CATEGORIES.find((c) => c.sensors.some((s) => s === k))?.label}</Pill>
                 </span>
               }
-              description={meta.description}
+              description={SENSOR_GUIDE[k].purpose}
               action={
                 <div className="flex items-center gap-2">
                   <span className="font-display text-2xl text-forest-950 tabular">
@@ -115,6 +120,11 @@ export function SensorsView() {
                 ))}
               </dl>
               {k === "ec" && <p className="mt-2 text-xs text-muted">Current TDS ≈ {tdsFromEc(live.latest.ec)} ppm (500 scale).</p>}
+              <details className="mt-4 border-t border-forest-100 pt-3 text-xs text-muted">
+                <summary className="font-semibold text-forest-700">How to use this reading</summary>
+                <p className="mt-2 leading-relaxed">{meta.description} {SENSOR_GUIDE[k].action}</p>
+                <p className="mt-2 leading-relaxed"><strong>Sensor care:</strong> {SENSOR_GUIDE[k].care}</p>
+              </details>
             </Card>
           );
         })}

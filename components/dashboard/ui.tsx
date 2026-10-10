@@ -23,14 +23,14 @@ export function Card({
   id?: string;
 }) {
   return (
-    <section id={id} className={cn("rounded-2xl border border-forest-100 bg-white shadow-[0_1px_2px_rgb(2_16_16/0.04)]", className)}>
+    <section id={id} className={cn("overflow-hidden rounded-2xl border border-forest-100 bg-white shadow-[0_2px_8px_rgb(2_16_16/0.025)]", className)}>
       {(title || action) && (
-        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-forest-100 px-5 py-4 sm:flex-nowrap">
+        <header className="flex flex-wrap items-start justify-between gap-3 border-b border-forest-100/70 px-5 py-4">
           <div className="min-w-0">
             {title && <h2 className="text-[0.95rem] font-semibold text-forest-900">{title}</h2>}
             {description && <p className="mt-0.5 text-xs text-muted">{description}</p>}
           </div>
-          {action && <div className="flex shrink-0 items-center gap-2">{action}</div>}
+          {action && <div className="flex max-w-full flex-wrap items-center gap-2">{action}</div>}
         </header>
       )}
       <div className={cn("p-5", bodyClassName)}>{children}</div>
@@ -42,7 +42,8 @@ export function PageHeader({ title, description, actions }: { title: string; des
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        <h1 className="font-display text-3xl font-medium tracking-tight text-forest-900 md:text-4xl">{title}</h1>
+        <p className="mb-2 text-[10px] font-semibold tracking-[0.18em] text-forest-500 uppercase">VIEM · Farm workspace</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-forest-900 md:text-3xl">{title}</h1>
         {description && <p className="mt-1.5 max-w-3xl text-sm text-muted">{description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}

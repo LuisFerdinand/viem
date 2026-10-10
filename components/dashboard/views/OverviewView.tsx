@@ -2,7 +2,7 @@
 
 import { ArrowRight, BellOff, Fish, MapPin, SatelliteDish, CloudOff } from "lucide-react";
 import Link from "next/link";
-import { ACTUATOR_KINDS, SENSOR_KEYS } from "@/lib/domain";
+import { ACTUATOR_KINDS, SENSOR_CATEGORIES } from "@/lib/domain";
 import { selectThresholds, selectUnit, unacknowledged } from "@/lib/sim/store";
 import { cn, fmtRelative } from "@/lib/utils";
 import { AlertItem } from "../AlertItem";
@@ -99,22 +99,16 @@ export function OverviewView() {
             Charts & history <ArrowRight className="size-3.5" aria-hidden="true" />
           </Link>
         </div>
-        <div className="grid gap-3 min-[480px]:grid-cols-2 xl:grid-cols-4">
-          {SENSOR_KEYS.map((k) => (
-            <SensorTile key={k} sensor={k} live={live} threshold={thresholds[k]} href={`/dashboard/sensors#${k}`} />
+        <div className="grid items-start gap-5 xl:grid-cols-3">
+          {SENSOR_CATEGORIES.map((category) => (
+            <div key={category.id} className="grid gap-3">
+              <div className="border-l-2 border-forest-300 pl-3">
+                <h3 className="text-sm font-semibold text-forest-900">{category.label} <span className="ml-1 text-xs font-normal text-muted">{category.sensors.length} sensors</span></h3>
+                <p className="mt-1 text-xs leading-relaxed text-muted">{category.description}</p>
+              </div>
+              {category.sensors.map((k) => <SensorTile key={k} sensor={k} live={live} threshold={thresholds[k]} href={`/dashboard/sensors#${k}`} />)}
+            </div>
           ))}
-          <Link
-            href="/dashboard/automation"
-            className="flex flex-col justify-between rounded-2xl bg-forest-900 p-4 text-white transition-colors hover:bg-forest-800"
-          >
-            <p className="text-sm font-semibold">Alarm parameters</p>
-            <p className="mt-2 text-xs text-forest-200">
-              Set normal and critical limits per sensor, or apply a crop preset. Out-of-range readings raise Tetum alerts.
-            </p>
-            <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-leaf-300">
-              Configure <ArrowRight className="size-3.5" aria-hidden="true" />
-            </span>
-          </Link>
         </div>
       </section>
 

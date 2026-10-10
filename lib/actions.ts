@@ -2,6 +2,11 @@
 
 import { and, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
+import type { BatchItem } from "drizzle-orm/batch";
+import { ledgerSchema, presetSchema } from "./dashboard-validation";
+import { todayInDili } from "./utils";
+import type { Preset } from "./domain";
+import type { LedgerDTO } from "./types";
 import { queryDashboardData } from "./data";
 import { db } from "./db/client";
 import * as s from "./db/schema";
@@ -257,29 +262,45 @@ export async function applyPreset(input: {
   unitId: string;
   presetId: string;
   actor: string;
-}): Promise<ActionResult<{ thresholds: ThresholdDTO[]; event: EventDTO }>> {
+  includeRules?: boolean;
+}): Promise<ActionResult<{ thresholds: ThresholdDTO[]; rules: RuleDTO[]; actuators: ActuatorDTO[]; event: EventDTO }>> {
   return run(async (database) => {
-    const v = z.object({ unitId, presetId: z.string().max(60), actor }).parse(input);
-    const preset = PRESETS.find((p) => p.id === v.presetId);
+    const v = z.object({ unitId, presetId: z.string().max(60), actor, includeRules: z.boolean().default(false) }).parse(input);
+    const [saved] = await database.select().from(s.automationPresets).where(eq(s.automationPresets.id, v.presetId));
+    const preset = saved?.definition ?? PRESETS.find((p) => p.id === v.presetId);
     if (!preset) throw new Error("Unknown preset");
+    presetSchema.parse(preset);
+    const [unit] = await database.select({ id: s.units.id }).from(s.units).where(eq(s.units.id, v.unitId));
+    if (!unit) throw new Error("Unit not found");
     const updates = SENSOR_KEYS.map((key) =>
       database
         .update(s.thresholds)
-        .set({ ...preset.values[key], updatedAt: new Date() })
+        .set({ ...preset.values[key], alarmEnabled: true, updatedAt: new Date() })
         .where(and(eq(s.thresholds.unitId, v.unitId), eq(s.thresholds.sensor, key)))
         .returning(),
     );
-    const results = await database.batch([
+    const statements: BatchItem<"pg">[] = [
       eventInsert(database, {
         unitId: v.unitId,
         category: "config",
-        message: `Alarm preset applied: ${preset.label}`,
+        message: `Preset applied: ${preset.label}${v.includeRules ? " (alarms, rules and Auto modes)" : " (alarms)"}`,
         actor: v.actor,
       }),
       ...updates,
-    ]);
-    const [[ev], ...rows] = results;
-    return { thresholds: rows.flat().map(toThreshold), event: toEvent(ev) };
+    ];
+    if (v.includeRules) {
+      statements.push(database.delete(s.automationRules).where(eq(s.automationRules.unitId, v.unitId)));
+      if (preset.rules.length) {
+        statements.push(database.insert(s.automationRules).values(preset.rules.map((r) => ({ ...r, unitId: v.unitId }))));
+        const kinds = [...new Set(preset.rules.filter((r) => r.enabled).map((r) => r.actuator))];
+        if (kinds.length) statements.push(database.update(s.actuators).set({ mode: "auto", updatedAt: new Date(), updatedBy: v.actor }).where(and(eq(s.actuators.unitId, v.unitId), inArray(s.actuators.kind, kinds))));
+      }
+    }
+    statements.push(database.select().from(s.thresholds).where(eq(s.thresholds.unitId, v.unitId)), database.select().from(s.automationRules).where(eq(s.automationRules.unitId, v.unitId)), database.select().from(s.actuators).where(eq(s.actuators.unitId, v.unitId)));
+    const results = await database.batch(statements as [BatchItem<"pg">, ...BatchItem<"pg">[]]);
+    const ev = results[0][0] as typeof s.events.$inferSelect;
+    const rows = results.slice(-3);
+    return { thresholds: (rows[0] as typeof s.thresholds.$inferSelect[]).map(toThreshold), rules: (rows[1] as typeof s.automationRules.$inferSelect[]).map(toRule), actuators: (rows[2] as typeof s.actuators.$inferSelect[]).map(toActuator), event: toEvent(ev) };
   });
 }
 
@@ -543,7 +564,7 @@ export async function setHarvestStatus(input: {
 }): Promise<ActionResult<HarvestDTO>> {
   return run(async (database) => {
     const v = z.object({ id: z.number().int().positive(), status: z.enum(HARVEST_STATUSES) }).parse(input);
-    const [row] = await database.update(s.harvests).set({ status: v.status }).where(eq(s.harvests.id, v.id)).returning();
+    const [row] = await database.update(s.harvests).set({ status: v.status, paidAt: v.status === "paid" ? sql`coalesce(${s.harvests.paidAt}, ${todayInDili()}::date)` : null }).where(eq(s.harvests.id, v.id)).returning();
     if (!row) throw new Error("Harvest not found");
     return toHarvest(row);
   });
@@ -612,5 +633,47 @@ export async function resetDemo(): Promise<ActionResult<DashboardData>> {
   return run(async (database) => {
     await seedDatabase(database);
     return { source: "database" as const, ...(await queryDashboardData()) };
+  });
+}
+
+export async function saveAutomationPreset(input: { preset: Preset; actor: string }): Promise<ActionResult<Preset>> {
+  return run(async (database) => {
+    actor.parse(input.actor);
+    const definition = presetSchema.parse(input.preset);
+    await database.batch([
+      database.insert(s.automationPresets).values({ id: definition.id, definition }).onConflictDoUpdate({ target: s.automationPresets.id, set: { definition, updatedAt: new Date() } }),
+      eventInsert(database, { unitId: null, category: "config", message: `Automation master preset saved: ${definition.label}`, actor: input.actor }),
+    ]);
+    return definition;
+  });
+}
+
+export async function deleteAutomationPreset(input: { id: string }): Promise<ActionResult<{ id: string }>> {
+  return run(async (database) => {
+    const id = z.string().min(1).max(60).parse(input.id);
+    if (PRESETS.some((p) => p.id === id)) throw new Error("Built-in templates can be edited or duplicated, but not deleted.");
+    await database.delete(s.automationPresets).where(eq(s.automationPresets.id, id));
+    return { id };
+  });
+}
+
+export async function saveLedgerEntry(input: Omit<LedgerDTO, "id"> & { id?: number; actor: string }): Promise<ActionResult<LedgerDTO>> {
+  return run(async (database) => {
+    const values = ledgerSchema.parse(input);
+    actor.parse(input.actor);
+    const id = z.number().int().positive().optional().parse(input.id);
+    const [row] = id
+      ? await database.update(s.ledgerEntries).set(values).where(and(eq(s.ledgerEntries.id, id), eq(s.ledgerEntries.unitId, values.unitId))).returning()
+      : await database.insert(s.ledgerEntries).values(values).returning();
+    if (!row) throw new Error("Ledger entry not found.");
+    return row;
+  });
+}
+
+export async function deleteLedgerEntry(input: { id: number; unitId: string }): Promise<ActionResult<{ id: number }>> {
+  return run(async (database) => {
+    const id = z.number().int().positive().parse(input.id);
+    await database.delete(s.ledgerEntries).where(and(eq(s.ledgerEntries.id, id), eq(s.ledgerEntries.unitId, unitId.parse(input.unitId))));
+    return { id };
   });
 }

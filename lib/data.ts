@@ -1,4 +1,5 @@
-import { asc, desc, gte, isNull, or } from "drizzle-orm";
+import { asc, desc, isNull, or } from "drizzle-orm";
+import { PRESETS } from "./domain";
 import { connection } from "next/server";
 import { db } from "./db/client";
 import * as s from "./db/schema";
@@ -7,13 +8,9 @@ import { toActuator, toAlert, toEvent, toHarvest, toRule, toThreshold, toUnit } 
 import { buildFallbackData } from "./seed-data";
 import type { DashboardData } from "./types";
 
-const HARVEST_WINDOW_DAYS = 70;
-
 export async function queryDashboardData(): Promise<Omit<DashboardData, "source">> {
   const database = db!;
-  const since = new Date(Date.now() - HARVEST_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
-
-  const [units, thresholds, actuators, rules, openAlerts, recentAlerts, events, harvests] =
+  const [units, thresholds, actuators, rules, openAlerts, recentAlerts, events, harvests, ledger, presets] =
     await Promise.all([
       database.select().from(s.units).orderBy(asc(s.units.sortOrder)),
       database.select().from(s.thresholds),
@@ -28,8 +25,9 @@ export async function queryDashboardData(): Promise<Omit<DashboardData, "source"
       database
         .select()
         .from(s.harvests)
-        .where(gte(s.harvests.harvestedAt, since))
         .orderBy(desc(s.harvests.harvestedAt), desc(s.harvests.id)),
+      database.select().from(s.ledgerEntries).orderBy(desc(s.ledgerEntries.date)),
+      database.select().from(s.automationPresets).orderBy(asc(s.automationPresets.id)),
     ]);
 
   const alertMap = new Map<number, (typeof recentAlerts)[number]>();
@@ -45,6 +43,8 @@ export async function queryDashboardData(): Promise<Omit<DashboardData, "source"
       .map(toAlert),
     events: events.map(toEvent),
     harvests: harvests.map(toHarvest),
+    ledger,
+    presets: [...PRESETS.filter((p) => !presets.some((r) => r.id === p.id)), ...presets.map((r) => r.definition)],
   };
 }
 

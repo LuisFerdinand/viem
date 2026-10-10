@@ -3,6 +3,7 @@ import {
   CROPS,
   BUYERS,
   DEFAULT_PRESET,
+  PRESETS,
   SENSOR_KEYS,
   type ActuatorKind,
   type ActuatorMode,
@@ -121,7 +122,7 @@ export function buildSeed(now = new Date()) {
   const thresholds: Omit<ThresholdDTO, "id">[] = [];
   const actuators: Omit<ActuatorDTO, "id">[] = [];
   const rules: Omit<RuleDTO, "id">[] = [];
-  const harvests: Omit<HarvestDTO, "id">[] = [];
+  const harvests: Omit<HarvestDTO, "id" | "paidAt">[] = [];
   const alerts: Omit<AlertDTO, "id">[] = [];
   const events: Omit<EventDTO, "id">[] = [];
 
@@ -260,7 +261,9 @@ export function buildFallbackData(note: string): DashboardData {
     rules: withId(seed.rules),
     alerts: withId(seed.alerts).reverse(),
     events: withId(seed.events).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-    harvests: withId(seed.harvests).sort((a, b) => b.harvestedAt.localeCompare(a.harvestedAt)),
+    harvests: withId(seed.harvests).map((h) => ({ ...h, paidAt: h.status === "paid" ? h.harvestedAt : null })).sort((a, b) => b.harvestedAt.localeCompare(a.harvestedAt)),
+    ledger: [],
+    presets: PRESETS,
   };
 }
 

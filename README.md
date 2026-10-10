@@ -5,7 +5,7 @@ VIEM Hub dashboard, built for the **Vorakai Konekta Challenge 2026** (AI & Data 
 
 - **Website** — Home, About, Solution, Impact, Proposal (with PDF downloads and an in-page preview).
 - **Dashboard demo** (`/dashboard`) — live sensors, controls, automation, Tetum-first alerts, harvest & buy-back,
-  the Tulun VIEM assistant, and an activity log.
+  Buku Besar, preset master data, the Tulun VIEM assistant, and an activity log.
 
 Stack: Next.js 16 (App Router, Turbopack) · React 19 · Tailwind CSS v4 · Drizzle ORM · Neon Postgres ·
 Recharts · Lucide icons.
@@ -69,6 +69,30 @@ low-oxygen guard, dry-run protection and overflow protection.
 use a deadband so a value hovering on a limit does not flap. Alerts are written in Tetum first with English beneath,
 go out "via WhatsApp" (or "SMS fallback" during a simulated link outage), and stay open until a person acknowledges
 them. Unanswered alerts show the 2-hour response target from the pilot plan.
+
+**Sensor categories** — Overview and Live sensors group readings into Basic monitoring (air temperature,
+humidity, water level), Fish health (water temperature, dissolved oxygen), and Advanced water quality (pH, EC/TDS).
+Each sensor explains its purpose, operator response and care. Some readings support both fish and plants.
+
+**Preset master data** (`/dashboard/presets`) — create, edit and duplicate crop/fish profiles by growth stage and
+growing system. Each template stores seven alarm ranges and equipment rules. Saving a template does not change
+unit settings. Applying alarms enables all seven alarms; selecting the equipment option also replaces that unit's
+rules and switches the enabled template equipment to Auto mode in one database batch. Built-in demo profiles
+cover shared tilapia/greens, NFT greens, fingerlings, lettuce and basil. Built-ins can be edited or duplicated;
+custom profiles can also be deleted.
+
+**Buku Besar** (`/dashboard/ledger`) — record and edit expenses or other income, including dates, notes, supplier/payer
+and receipt references. Amounts are stored as integer USD cents. Paid harvests appear once as derived buy-back income
+using the payment date; logged/collected harvests remain outstanding. Updating or deleting a harvest updates its
+linked ledger row. Date filters, search, running balances and CSV export support reconciliation. Layouts adapt to
+mobile screens. This is a cash record; the existing harvest forecast remains an illustrative production estimate.
+
+Apply `npm run db:migrate` for the preset and ledger tables and harvest payment-date column before using these
+features against Neon. Existing paid harvests use their harvest dates as historical payment dates because the old
+schema did not capture payment dates. Ledger and harvest history is retained without the former 70-day query limit.
+In fallback mode, ledger entries, harvests and master presets persist in this browser's local storage; equipment
+settings retain the original session-only demo behavior. Database records remain the source of truth when connected.
+Reset demo data clears these records too.
 
 **Demo scenarios** on the Overview page inject a pump failure, heat wave, pH crash, tank leak or satellite-link
 outage so you can watch alarms, automation and interlocks respond.

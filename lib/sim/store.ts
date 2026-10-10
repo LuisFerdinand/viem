@@ -17,6 +17,10 @@ import {
   setActuatorPower,
   setHarvestStatus,
   updateRule,
+  saveAutomationPreset,
+  deleteAutomationPreset,
+  saveLedgerEntry,
+  deleteLedgerEntry,
 } from "../actions";
 
 const api = {
@@ -38,6 +42,10 @@ const api = {
   setActuatorPower,
   setHarvestStatus,
   updateRule,
+  saveAutomationPreset,
+  deleteAutomationPreset,
+  saveLedgerEntry,
+  deleteLedgerEntry,
 };
 import {
   ACTUATOR_KINDS,
@@ -57,6 +65,7 @@ import {
   type SensorKey,
   type SensorStatus,
   type ThresholdValues,
+  type Preset,
 } from "../domain";
 import { buildFallbackData } from "../seed-data";
 import type {
@@ -67,7 +76,10 @@ import type {
   EventDTO,
   HarvestDTO,
   RuleDTO,
+  LedgerDTO,
 } from "../types";
+import { ledgerSchema, presetSchema } from "../dashboard-validation";
+import { todayInDili } from "../utils";
 import {
   BYTES_PER_READING,
   HISTORY_POINTS,
@@ -208,6 +220,7 @@ export class DashboardStore {
   }
   private setData(fn: (d: DashboardData) => Partial<DashboardData>) {
     this.set({ data: { ...this.snap.data, ...fn(this.snap.data) } });
+    if (this.started && !this.canPersist) writeLS("viem.farm-records.v1", JSON.stringify({ ledger: this.snap.data.ledger, presets: this.snap.data.presets, harvests: this.snap.data.harvests }));
   }
   private get canPersist() {
     return this.snap.data.source === "database";
@@ -221,6 +234,18 @@ export class DashboardStore {
 
     const savedUnit = readLS(LS_UNIT);
     const savedOperator = readLS(LS_OPERATOR);
+    if (!this.canPersist) {
+      try {
+        const saved = JSON.parse(readLS("viem.farm-records.v1") ?? "null");
+        if (saved) {
+          const ledger = (saved.ledger as LedgerDTO[]).map((r) => ({ ...ledgerSchema.parse(r), id: r.id }));
+          const presets = (saved.presets as Preset[]).map((p) => presetSchema.parse(p));
+          const harvests = (saved.harvests as HarvestDTO[]).filter((h) => Number.isInteger(h.id) && this.snap.data.units.some((u) => u.id === h.unitId) && Number.isFinite(h.weightKg) && Number.isFinite(h.pricePerKg) && ["logged", "collected", "paid"].includes(h.status));
+          this.set({ data: { ...this.snap.data, ledger, presets, harvests } });
+          this.tempId = Math.min(-1, ...ledger.map((r) => r.id - 1), ...harvests.map((h) => h.id - 1));
+        }
+      } catch { /* Ignore damaged or outdated browser records. */ }
+    }
     const units = this.snap.data.units;
     const patch: Partial<Snapshot> = { ready: true };
     if (savedUnit && units.some((u) => u.id === savedUnit)) patch.selectedUnitId = savedUnit;
@@ -809,23 +834,27 @@ export class DashboardStore {
     return res.error;
   }
 
-  async applyPreset(unitId: string, presetId: string) {
-    const preset = PRESETS.find((p) => p.id === presetId);
+  async applyPreset(unitId: string, presetId: string, includeRules = false) {
+    const preset = this.snap.data.presets.find((p) => p.id === presetId);
     if (!preset) return;
     const by = this.snap.operator;
-    const before = this.snap.data.thresholds;
+    const before = { thresholds: this.snap.data.thresholds, rules: this.snap.data.rules, actuators: this.snap.data.actuators };
     this.setData((d) => ({
-      thresholds: d.thresholds.map((t) => (t.unitId === unitId ? { ...t, ...preset.values[t.sensor] } : t)),
+      thresholds: d.thresholds.map((t) => (t.unitId === unitId ? { ...t, ...preset.values[t.sensor], alarmEnabled: true } : t)),
+      ...(includeRules ? { rules: [...d.rules.filter((r) => r.unitId !== unitId), ...preset.rules.map((r) => ({ ...r, unitId, id: this.tempId-- }))], actuators: d.actuators.map((a) => a.unitId === unitId && preset.rules.some((r) => r.enabled && r.actuator === a.kind) ? { ...a, mode: "auto" as const } : a) } : {}),
     }));
     this.recomputeUnit(unitId);
-    const res = await this.call(`preset:${unitId}`, () => api.applyPreset({ unitId, presetId, actor: by }));
+    const res = await this.call(`preset:${unitId}`, () => api.applyPreset({ unitId, presetId, actor: by, includeRules }));
     if (res.ok) {
       const map = new Map(res.data.thresholds.map((t) => [t.id, t]));
-      this.setData((d) => ({ thresholds: d.thresholds.map((t) => map.get(t.id) ?? t) }));
+      this.setData((d) => ({ thresholds: d.thresholds.map((t) => map.get(t.id) ?? t), rules: [...d.rules.filter((r) => r.unitId !== unitId), ...res.data.rules], actuators: [...d.actuators.filter((a) => a.unitId !== unitId), ...res.data.actuators] }));
       this.pushEvent(res.data.event);
       this.toast("success", `Preset applied: ${preset.label}`);
     } else if (res.error !== "offline") {
-      this.setData(() => ({ thresholds: before }));
+      this.setData(() => before);
+      this.recomputeUnit(unitId);
+    } else {
+      this.toast("success", `Preset applied: ${preset.label}`);
     }
   }
 
@@ -898,6 +927,7 @@ export class DashboardStore {
       buyer: input.buyer,
       status: "logged",
       harvestedAt: input.harvestedAt,
+      paidAt: null,
     };
     const res = await this.call("harvest:new", () => api.addHarvest({ ...input, actor: by }));
     if (res.ok) {
@@ -915,10 +945,11 @@ export class DashboardStore {
   async setHarvestStatus(id: number, status: HarvestStatus) {
     const before = this.snap.data.harvests.find((h) => h.id === id);
     if (!before) return;
-    this.setData((d) => ({ harvests: d.harvests.map((h) => (h.id === id ? { ...h, status } : h)) }));
+    this.setData((d) => ({ harvests: d.harvests.map((h) => (h.id === id ? { ...h, status, paidAt: status === "paid" ? h.paidAt ?? todayInDili() : null } : h)) }));
     if (id < 0) return;
     const res = await this.call(`harvest:${id}`, () => api.setHarvestStatus({ id, status }));
-    if (!res.ok && res.error !== "offline") {
+    if (res.ok) this.setData((d) => ({ harvests: d.harvests.map((h) => h.id === id ? res.data : h) }));
+    else if (res.error !== "offline") {
       this.setData((d) => ({ harvests: d.harvests.map((h) => (h.id === id ? before : h)) }));
     }
   }
@@ -932,6 +963,41 @@ export class DashboardStore {
   }
 
   /* ---------------- maintenance, activity, assistant ---------------- */
+
+  async savePreset(preset: Preset) {
+    const parsed = presetSchema.safeParse(preset);
+    if (!parsed.success) return parsed.error.issues[0]?.message ?? "Check the preset.";
+    const res = await this.call("preset:save", () => api.saveAutomationPreset({ preset: parsed.data, actor: this.snap.operator }));
+    if (!res.ok && res.error !== "offline") return res.error;
+    const row = res.ok ? res.data : parsed.data;
+    this.setData((d) => ({ presets: [...d.presets.filter((p) => p.id !== row.id), row] }));
+    this.toast("success", "Master preset saved");
+    return null;
+  }
+
+  async deletePreset(id: string) {
+    if (PRESETS.some((p) => p.id === id)) return;
+    const res = await this.call("preset:delete", () => api.deleteAutomationPreset({ id }));
+    if (!res.ok && res.error !== "offline") return;
+    this.setData((d) => ({ presets: d.presets.filter((p) => p.id !== id) }));
+  }
+
+  async saveLedger(input: Omit<LedgerDTO, "id"> & { id?: number }) {
+    const parsed = ledgerSchema.safeParse(input);
+    if (!parsed.success) return parsed.error.issues[0]?.message ?? "Check the transaction.";
+    const res = await this.call("ledger:save", () => api.saveLedgerEntry({ ...parsed.data, id: input.id && input.id > 0 ? input.id : undefined, actor: this.snap.operator }));
+    if (!res.ok && res.error !== "offline") return res.error;
+    const row: LedgerDTO = res.ok ? res.data : { ...parsed.data, id: input.id ?? this.tempId-- };
+    this.setData((d) => ({ ledger: [row, ...d.ledger.filter((r) => r.id !== row.id)] }));
+    this.toast("success", "Transaction saved");
+    return null;
+  }
+
+  async deleteLedger(row: LedgerDTO) {
+    const res = await this.call(`ledger:${row.id}`, () => api.deleteLedgerEntry({ id: row.id, unitId: row.unitId }));
+    if (!res.ok && res.error !== "offline") return;
+    this.setData((d) => ({ ledger: d.ledger.filter((r) => r.id !== row.id) }));
+  }
 
   async logMaintenance(unitId: string, kind: "test-strip" | "calibration", ph?: number, ammonia?: number) {
     const by = this.snap.operator;
@@ -988,6 +1054,7 @@ export class DashboardStore {
     if (!res.ok) return;
     const data = res.data;
     this.set({ data, hasMoreEvents: data.events.length >= 60 });
+    if (!this.canPersist) writeLS("viem.farm-records.v1", JSON.stringify({ ledger: data.ledger, presets: data.presets, harvests: data.harvests }));
     this.syncAlarmsFromData();
     const live = { ...this.snap.live };
     for (const id of Object.keys(live)) live[id] = { ...live[id], scenarios: { ...NO_SCENARIOS }, runtimeMs: zeroRuntime() };

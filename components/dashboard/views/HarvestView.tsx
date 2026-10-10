@@ -2,6 +2,7 @@
 
 import { Fish, Leaf, Plus, Sprout, Trash2, Truck, type LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BUYERS, CROP_BY_ID, CROPS, HARVEST_STATUSES, type CropCategory, type HarvestStatus } from "@/lib/domain";
 import { selectUnit } from "@/lib/sim/store";
@@ -168,6 +169,11 @@ export function HarvestView() {
         description="VIEM buys every unit's harvest at a pre-agreed floor price, then sells to schools, hotels, supermarkets and restaurants."
         actions={<Segmented label="Scope" value={scope} onChange={setScope} options={[{ value: "unit", label: unit.name }, { value: "all", label: "Whole network" }]} />}
       />
+
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-water-100 bg-water-50 px-4 py-3">
+        <p className="text-xs leading-relaxed text-water-700">Mark a buy-back as paid to record its income automatically in Buku Besar. Logged and collected harvests remain outstanding.</p>
+        <Link href="/dashboard/ledger" className="dash-secondary">Open Buku Besar</Link>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-forest-100 bg-white p-4">

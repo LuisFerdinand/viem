@@ -2,10 +2,10 @@
 
 import { BellRing, Languages, MessageCircle, Pencil, Plus, Trash2, TriangleAlert, UserRoundCheck, Workflow } from "lucide-react";
 import { useState } from "react";
+import Link from "next/link";
 import {
   ACTUATOR_KINDS,
   ACTUATORS,
-  PRESETS,
   SENSOR_KEYS,
   SENSORS,
   formatSensor,
@@ -360,18 +360,20 @@ export function AutomationView() {
   const th = selectThresholds(snap);
   const rules = snap.data.rules.filter((r) => r.unitId === unit.id);
   const actuators = snap.data.actuators.filter((a) => a.unitId === unit.id);
-  const [preset, setPreset] = useState(PRESETS[0].id);
+  const [preset, setPreset] = useState(snap.data.presets[0].id);
+  const [includeRules, setIncludeRules] = useState(false);
   const [adding, setAdding] = useState(false);
   if (!live) return null;
 
   const modeOf = (k: ActuatorKind) => actuators.find((a) => a.kind === k)?.mode;
-  const presetMeta = PRESETS.find((p) => p.id === preset)!;
+  const presetMeta = snap.data.presets.find((p) => p.id === preset) ?? snap.data.presets[0];
 
   return (
     <div className="grid gap-6">
       <PageHeader
         title="Automation & alarms"
         description={`${unit.name} · alarm parameters decide when a Tetum alert is sent; rules decide what the equipment does about it.`}
+        actions={<Link href="/dashboard/presets" className="dash-secondary">Manage preset master data</Link>}
       />
 
       <Card
@@ -382,14 +384,14 @@ export function AutomationView() {
             className="flex flex-wrap items-center gap-2"
             onSubmit={(e) => {
               e.preventDefault();
-              void store.applyPreset(unit.id, preset);
+              void store.applyPreset(unit.id, presetMeta.id, includeRules);
             }}
           >
             <label htmlFor="preset" className="sr-only">
               Crop preset
             </label>
-            <Select id="preset" value={preset} onChange={(e) => setPreset(e.target.value)} className="h-9 w-auto rounded-full text-xs">
-              {PRESETS.map((p) => (
+            <Select id="preset" value={presetMeta.id} onChange={(e) => setPreset(e.target.value)} className="h-9 w-auto max-w-full rounded-full text-xs">
+              {snap.data.presets.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.label}
                 </option>
@@ -406,8 +408,14 @@ export function AutomationView() {
         }
       >
         <p className="mb-4 rounded-xl bg-leaf-50 px-3 py-2 text-xs text-leaf-700">
-          <strong>{presetMeta.label}:</strong> {presetMeta.description}
+          <strong>{presetMeta.label} · {presetMeta.stage} · {presetMeta.system}:</strong> {presetMeta.description}
         </p>
+        <div className="mb-5 grid gap-3 rounded-xl border border-forest-100 p-4">
+          <p className="text-xs text-muted">Applying this preset replaces all seven alarm ranges and enables their alarms. Values are illustrative demo settings.</p>
+          <label className="flex items-start gap-2 text-sm text-forest-800"><input type="checkbox" checked={includeRules} onChange={(e) => setIncludeRules(e.target.checked)} className="mt-1 size-4 accent-forest-700" />Also replace this unit's automation rules and switch the template's enabled equipment to Auto mode.</label>
+          <div className="flex flex-wrap gap-2">{["ph", "ec", "do"].map((key) => { const k = key as SensorKey; return <Pill key={k}>{SENSORS[k].label}: {presetMeta.values[k].min}–{presetMeta.values[k].max} {SENSORS[k].unit}</Pill>; })}</div>
+          {includeRules && <ul className="grid gap-1 text-xs text-muted">{presetMeta.rules.map((r, i) => <li key={i}>{ACTUATORS[r.actuator].label}: ON {SENSORS[r.sensor].short} {r.condition} {r.onValue}, OFF at {r.offValue} {SENSORS[r.sensor].unit}{r.enabled ? "" : " (disabled)"}</li>)}</ul>}
+        </div>
         <ul className="grid gap-3 xl:grid-cols-2">
           {SENSOR_KEYS.map((k) => {
             const t = th[k];
