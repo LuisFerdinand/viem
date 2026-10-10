@@ -1,5 +1,7 @@
 "use client";
 
+import { useLanguage } from "./LanguageProvider";
+
 import { CircleCheck, CircleAlert, OctagonAlert, type LucideIcon } from "lucide-react";
 import { useId, type ComponentProps, type ReactNode } from "react";
 import type { SensorStatus, ThresholdValues } from "@/lib/domain";
@@ -22,13 +24,14 @@ export function Card({
   bodyClassName?: string;
   id?: string;
 }) {
+  const { tr } = useLanguage();
   return (
     <section id={id} className={cn("overflow-hidden rounded-2xl border border-forest-100 bg-white shadow-[0_2px_8px_rgb(2_16_16/0.025)]", className)}>
       {(title || action) && (
         <header className="flex flex-wrap items-start justify-between gap-3 border-b border-forest-100/70 px-5 py-4">
           <div className="min-w-0">
-            {title && <h2 className="text-[0.95rem] font-semibold text-forest-900">{title}</h2>}
-            {description && <p className="mt-0.5 text-xs text-muted">{description}</p>}
+            {title && <h2 className="text-[0.95rem] font-semibold text-forest-900">{typeof title === "string" ? tr(title) : title}</h2>}
+            {description && <p className="mt-0.5 text-xs text-muted">{typeof description === "string" ? tr(description) : description}</p>}
           </div>
           {action && <div className="flex max-w-full flex-wrap items-center gap-2">{action}</div>}
         </header>
@@ -39,12 +42,13 @@ export function Card({
 }
 
 export function PageHeader({ title, description, actions }: { title: string; description?: ReactNode; actions?: ReactNode }) {
+  const { tr } = useLanguage();
   return (
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div className="min-w-0">
-        <p className="mb-2 text-[10px] font-semibold tracking-[0.18em] text-forest-500 uppercase">VIEM · Farm workspace</p>
-        <h1 className="text-2xl font-semibold tracking-tight text-forest-900 md:text-3xl">{title}</h1>
-        {description && <p className="mt-1.5 max-w-3xl text-sm text-muted">{description}</p>}
+        <p className="mb-2 text-[10px] font-semibold tracking-[0.18em] text-forest-500 uppercase">{tr("VIEM · Farm workspace")}</p>
+        <h1 className="text-2xl font-semibold tracking-tight text-forest-900 md:text-3xl">{tr(title)}</h1>
+        {description && <p className="mt-1.5 max-w-3xl text-sm text-muted">{typeof description === "string" ? tr(description) : description}</p>}
       </div>
       {actions && <div className="flex flex-wrap items-center gap-2">{actions}</div>}
     </div>
@@ -58,12 +62,13 @@ const STATUS_META: Record<SensorStatus, { label: string; icon: LucideIcon; class
 };
 
 export function StatusBadge({ status, className, label }: { status: SensorStatus; className?: string; label?: string }) {
+  const { tr } = useLanguage();
   const m = STATUS_META[status];
   const Icon = m.icon;
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-semibold", m.className, className)}>
       <Icon className="size-3.5" aria-hidden="true" />
-      {label ?? m.label}
+      {tr(label ?? m.label)}
     </span>
   );
 }
@@ -93,12 +98,13 @@ export function Switch({
   disabled?: boolean;
   size?: "md" | "lg";
 }) {
+  const { tr } = useLanguage();
   return (
     <button
       type="button"
       role="switch"
       aria-checked={checked}
-      aria-label={label}
+      aria-label={tr(label)}
       disabled={disabled}
       onClick={() => onChange(!checked)}
       className={cn(
@@ -136,8 +142,9 @@ export function Segmented<T extends string>({
   disabled?: boolean;
   className?: string;
 }) {
+  const { tr } = useLanguage();
   return (
-    <div role="radiogroup" aria-label={label} className={cn("inline-flex rounded-full bg-forest-50 p-1 ring-1 ring-forest-100", className)}>
+    <div role="radiogroup" aria-label={tr(label)} className={cn("inline-flex rounded-full bg-forest-50 p-1 ring-1 ring-forest-100", className)}>
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -153,7 +160,7 @@ export function Segmented<T extends string>({
               active ? "bg-forest-800 text-white shadow-sm" : "text-forest-700 hover:bg-white",
             )}
           >
-            {o.label}
+            {tr(o.label)}
           </button>
         );
       })}
@@ -216,6 +223,7 @@ export function Field({
   children: (props: { id: string; "aria-describedby"?: string; "aria-invalid"?: boolean }) => ReactNode;
   className?: string;
 }) {
+  const { tr } = useLanguage();
   const id = useId();
   const hintId = `${id}-hint`;
   const errId = `${id}-err`;
@@ -223,17 +231,17 @@ export function Field({
   return (
     <div className={cn("grid gap-1.5", className)}>
       <label htmlFor={id} className="text-xs font-semibold text-forest-800">
-        {label}
+        {tr(label)}
       </label>
       {children({ id, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })}
       {hint && !error && (
         <p id={hintId} className="text-xs text-muted">
-          {hint}
+          {typeof hint === "string" ? tr(hint) : hint}
         </p>
       )}
       {error && (
         <p id={errId} role="alert" className="text-xs font-medium text-crit-700">
-          {error}
+          {tr(error)}
         </p>
       )}
     </div>
@@ -252,12 +260,13 @@ export function Select(props: ComponentProps<"select">) {
 }
 
 export function EmptyState({ icon: Icon, title, children }: { icon: LucideIcon; title: string; children?: ReactNode }) {
+  const { tr } = useLanguage();
   return (
     <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-forest-200 px-6 py-10 text-center">
       <span className="flex size-11 items-center justify-center rounded-full bg-forest-50 text-forest-500">
         <Icon className="size-5" aria-hidden="true" />
       </span>
-      <p className="mt-3 text-sm font-semibold text-forest-900">{title}</p>
+      <p className="mt-3 text-sm font-semibold text-forest-900">{tr(title)}</p>
       {children && <div className="mt-1 max-w-sm text-sm text-muted">{children}</div>}
     </div>
   );

@@ -1,10 +1,12 @@
 "use client";
 
+import { useLanguage, useDashboardFormatters } from "./LanguageProvider";
+
 import { Check, Clock, MessageCircle, MessageSquareText, OctagonAlert, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { ALERT_LABEL, SENSORS, isSensorKey } from "@/lib/domain";
 import type { AlertDTO, UnitDTO } from "@/lib/types";
-import { cn, fmtDateTime, fmtDuration, fmtRelative } from "@/lib/utils";
+import { cn, fmtDuration } from "@/lib/utils";
 import { useNow, useSnapshot, useStore } from "./DashboardProvider";
 import { SENSOR_ICON } from "./icons";
 import { Input, Pill } from "./ui";
@@ -13,13 +15,15 @@ import { Input, Pill } from "./ui";
 const SLA_MS = 2 * 3_600_000;
 
 export function AlertItem({ alert, unit, compact = false }: { alert: AlertDTO; unit?: UnitDTO; compact?: boolean }) {
+  const { fmtDateTime, fmtRelative } = useDashboardFormatters();
+  const { tr, language } = useLanguage();
   const store = useStore();
   const snap = useSnapshot();
   const now = useNow();
   const [acking, setAcking] = useState(false);
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
-  const [showEn, setShowEn] = useState(false);
+  const [showOriginal, setShowOriginal] = useState(false);
 
   const critical = alert.severity === "critical";
   const Icon = SENSOR_ICON[alert.code];
@@ -59,46 +63,41 @@ export function AlertItem({ alert, unit, compact = false }: { alert: AlertDTO; u
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="text-sm font-semibold text-forest-900">
-              {ALERT_LABEL[alert.code]} · <span className="tabular">{value}</span>
+              {tr(ALERT_LABEL[alert.code])} · <span className="tabular">{tr(value)}</span>
             </p>
             <Pill tone={critical ? "crit" : "warn"}>
-              <SevIcon className="size-3" aria-hidden="true" /> {critical ? "Critical" : "Warning"}
+              <SevIcon className="size-3" aria-hidden="true" /> {tr(critical ? "Critical" : "Warning")}
             </Pill>
-            <Pill tone={active ? "dark" : "neutral"}>{active ? "Active" : "Cleared"}</Pill>
+            <Pill tone={active ? "dark" : "neutral"}>{tr(active ? "Active" : "Cleared")}</Pill>
             {acked && (
               <Pill tone="leaf">
-                <Check className="size-3" aria-hidden="true" /> Acknowledged
-              </Pill>
+                <Check className="size-3" aria-hidden="true" /> {tr("Acknowledged")}</Pill>
             )}
           </div>
           <p className="mt-1 text-xs text-muted">
-            {unit ? `${unit.name} · ` : ""}
-            {fmtDateTime(alert.createdAt)}
-            {now ? ` (${fmtRelative(alert.createdAt, now)})` : ""}
+            {tr(unit ? `${unit.name} · ` : "")}
+            {tr(fmtDateTime(alert.createdAt))}
+            {tr(now ? ` (${fmtRelative(alert.createdAt, now)})` : "")}
             {" · "}
             <span className="inline-flex items-center gap-1">
               {alert.channel === "sms" ? <MessageSquareText className="size-3" aria-hidden="true" /> : <MessageCircle className="size-3" aria-hidden="true" />}
-              Sent via {alert.channel === "sms" ? "SMS fallback" : "WhatsApp"}
+              {tr("Sent via")}{" "}{tr(alert.channel === "sms" ? "SMS fallback" : "WhatsApp")}
             </span>
           </p>
 
           <div className="mt-3 rounded-xl bg-white/80 p-3 ring-1 ring-forest-100">
-            <p lang="tet" className="text-sm font-medium text-forest-950">
-              {alert.messageTet}
+            <p lang={language} className="text-sm font-medium text-forest-950">
+              {language === "tet" ? alert.messageTet : tr(alert.messageEn)}
             </p>
-            {(showEn || !compact) && <p className="mt-1 text-xs text-muted italic">{alert.messageEn}</p>}
-            {compact && (
-              <button type="button" onClick={() => setShowEn((v) => !v)} className="mt-1 text-xs font-medium text-water-700 hover:underline">
-                {showEn ? "Hide English" : "Show English"}
-              </button>
-            )}
+            {showOriginal && <p lang={language === "tet" ? "en" : "tet"} className="mt-1 text-xs text-muted italic">{language === "tet" ? alert.messageEn : alert.messageTet}</p>}
+            {!compact && <button type="button" onClick={() => setShowOriginal((v) => !v)} className="mt-2 min-h-9 text-xs font-medium text-water-700 hover:underline">{tr(showOriginal ? "Hide original message" : "Show original message")}</button>}
           </div>
 
           {acked ? (
             <p className="mt-2 text-xs text-muted">
-              Acknowledged by <strong className="text-forest-800">{alert.acknowledgedBy}</strong>
-              {alert.acknowledgedAt ? ` · ${fmtDateTime(alert.acknowledgedAt)}` : ""}
-              {alert.note ? ` — “${alert.note}”` : ""}
+              {tr("Acknowledged by")}{" "}<strong className="text-forest-800">{alert.acknowledgedBy}</strong>
+              {tr(alert.acknowledgedAt ? ` · ${fmtDateTime(alert.acknowledgedAt)}` : "")}
+              {tr(alert.note ? ` — “${alert.note}”` : "")}
             </p>
           ) : acking ? (
             <form
@@ -109,14 +108,13 @@ export function AlertItem({ alert, unit, compact = false }: { alert: AlertDTO; u
               }}
             >
               <label className="sr-only" htmlFor={`note-${alert.id}`}>
-                What did you find or do?
-              </label>
+                {tr("What did you find or do?")}</label>
               <Input
                 id={`note-${alert.id}`}
                 value={note}
                 maxLength={280}
                 onChange={(e) => setNote(e.target.value)}
-                placeholder="What did you find or do? (optional)"
+                placeholder={tr("What did you find or do? (optional)")}
                 autoFocus
               />
               <div className="flex gap-2">
@@ -125,11 +123,10 @@ export function AlertItem({ alert, unit, compact = false }: { alert: AlertDTO; u
                   disabled={busy}
                   className="inline-flex h-11 items-center gap-1.5 rounded-full bg-forest-800 px-4 text-sm font-semibold whitespace-nowrap text-white hover:bg-forest-700 disabled:opacity-50"
                 >
-                  <Check className="size-4" aria-hidden="true" /> {busy ? "Saving…" : `Confirm as ${snap.operator}`}
+                  <Check className="size-4" aria-hidden="true" /> {tr(busy ? "Saving…" : `Confirm as ${snap.operator}`)}
                 </button>
                 <button type="button" onClick={() => setAcking(false)} className="h-11 rounded-full px-4 text-sm font-medium text-forest-700 hover:bg-forest-50">
-                  Cancel
-                </button>
+                  {tr("Cancel")}</button>
               </div>
             </form>
           ) : (
@@ -139,12 +136,11 @@ export function AlertItem({ alert, unit, compact = false }: { alert: AlertDTO; u
                 onClick={() => setAcking(true)}
                 className="inline-flex h-9 items-center gap-1.5 rounded-full bg-forest-800 px-4 text-xs font-semibold text-white hover:bg-forest-700"
               >
-                <Check className="size-3.5" aria-hidden="true" /> Acknowledge
-              </button>
+                <Check className="size-3.5" aria-hidden="true" /> {tr("Confirm checked")}</button>
               {now > 0 && (
                 <span className={cn("inline-flex items-center gap-1 text-xs tabular", slaLeft < 0 ? "font-semibold text-crit-700" : "text-muted")}>
                   <Clock className="size-3.5" aria-hidden="true" />
-                  {slaLeft < 0 ? `Escalated to VIEM agronomist ${fmtDuration(-slaLeft)} ago` : `${fmtDuration(slaLeft)} left to respond`}
+                  {tr(slaLeft < 0 ? `Escalated to VIEM agronomist ${fmtDuration(-slaLeft)} ago` : `${fmtDuration(slaLeft)} left to respond`)}
                 </span>
               )}
             </div>

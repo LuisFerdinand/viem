@@ -1,5 +1,7 @@
 "use client";
 
+import { useLanguage } from "./LanguageProvider";
+
 import { Pause, Play, RefreshCw } from "lucide-react";
 import { TICK_MS } from "@/lib/sim/engine";
 import { fmtTimeSec } from "@/lib/utils";
@@ -16,6 +18,7 @@ const LABEL: Record<string, [string, string?]> = {
 
 /** Shows the 30-second gathering cycle and lets the user pause, resume or read now. */
 export function FeedIndicator() {
+  const { tr } = useLanguage();
   const store = useStore();
   const { feed } = useSnapshot();
   const now = useNow();
@@ -54,20 +57,20 @@ export function FeedIndicator() {
           <span className={cn("size-2 rounded-full", live ? "bg-ok-500 text-ok-500 motion-safe:animate-pulse-ring" : "bg-forest-300")} />
         </span>
         <span className="whitespace-nowrap">
-          {LABEL[feed.status][0]}
-          {LABEL[feed.status][1] && <span className="hidden sm:inline">{LABEL[feed.status][1]}</span>}
-          {live && secondsLeft != null && <span className="hidden text-ok-700/80 sm:inline"> · next in {secondsLeft}s</span>}
+          {tr(LABEL[feed.status][0])}
+          {LABEL[feed.status][1] && <span className="hidden sm:inline">{tr(LABEL[feed.status][1])}</span>}
+          {live && secondsLeft != null && <span className="hidden text-ok-700/80 sm:inline"> {tr("· next in")}{" "}{tr(secondsLeft)}{tr("s")}</span>}
         </span>
         {feed.lastTickAt && (
-          <span className="hidden border-l border-current/20 pl-2 text-[0.7rem] opacity-80 xl:inline">Last {fmtTimeSec(feed.lastTickAt)}</span>
+          <span className="hidden border-l border-current/20 pl-2 text-[0.7rem] opacity-80 xl:inline">{tr("Last")}{" "}{tr(fmtTimeSec(feed.lastTickAt))}</span>
         )}
       </div>
       {live ? (
         <button
           type="button"
           onClick={() => store.pause()}
-          aria-label="Pause live feed"
-          title="Pause live feed"
+          aria-label={tr("Pause live feed")}
+          title={tr("Pause live feed")}
           className="inline-flex size-9 items-center justify-center rounded-full text-forest-700 ring-1 ring-forest-100 transition-colors hover:bg-forest-50"
         >
           <Pause className="size-4" />
@@ -76,8 +79,8 @@ export function FeedIndicator() {
         <button
           type="button"
           onClick={() => store.resume()}
-          aria-label="Resume live feed"
-          title="Resume live feed"
+          aria-label={tr("Resume live feed")}
+          title={tr("Resume live feed")}
           className="inline-flex size-9 items-center justify-center rounded-full bg-forest-800 text-white transition-colors hover:bg-forest-700"
         >
           <Play className="size-4" />
@@ -86,8 +89,8 @@ export function FeedIndicator() {
       <button
         type="button"
         onClick={() => store.readNow()}
-        aria-label="Take a reading now"
-        title="Take a reading now"
+        aria-label={tr("Take a reading now")}
+        title={tr("Take a reading now")}
         className="inline-flex size-9 items-center justify-center rounded-full text-forest-700 ring-1 ring-forest-100 transition-colors hover:bg-forest-50"
       >
         <RefreshCw className="size-4" />

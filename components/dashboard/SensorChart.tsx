@@ -1,5 +1,7 @@
 "use client";
 
+import { useLanguage } from "./LanguageProvider";
+
 import {
   Area,
   CartesianGrid,
@@ -31,6 +33,7 @@ function offlineRanges(data: Reading[]) {
 }
 
 export function SensorChart({ sensor, data, threshold, height = 200 }: { sensor: SensorKey; data: Reading[]; threshold?: ThresholdDTO; height?: number }) {
+  const { tr } = useLanguage();
   const meta = SENSORS[sensor];
   const values = data.map((d) => d[sensor]);
   let lo = Math.min(...values);
@@ -93,11 +96,11 @@ export function SensorChart({ sensor, data, threshold, height = 200 }: { sensor:
               return (
                 <div className="rounded-xl border border-forest-100 bg-white px-3 py-2 text-xs shadow-soft">
                   <p className="text-muted">
-                    {fmtTimeSec(r.t)}
-                    {r.offline && " · buffered offline"}
+                    {tr(fmtTimeSec(r.t))}
+                    {tr(r.offline && " · buffered offline")}
                   </p>
                   <p className="mt-0.5 font-semibold text-forest-900 tabular">
-                    {r[sensor].toFixed(meta.decimals)} {meta.unit}
+                    {tr(r[sensor].toFixed(meta.decimals))} {tr(meta.unit)}
                   </p>
                 </div>
               );

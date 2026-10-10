@@ -1,17 +1,22 @@
 "use client";
 
-import { ArrowRight, BellOff, Fish, MapPin, SatelliteDish, CloudOff } from "lucide-react";
+import { useLanguage, useDashboardFormatters } from "../LanguageProvider";
+
+import { ArrowRight, BellOff, Fish, MapPin, SatelliteDish, CloudOff, Bell, Sprout, Wallet } from "lucide-react";
 import Link from "next/link";
 import { ACTUATOR_KINDS, SENSOR_CATEGORIES } from "@/lib/domain";
 import { selectThresholds, selectUnit, unacknowledged } from "@/lib/sim/store";
-import { cn, fmtRelative } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { AlertItem } from "../AlertItem";
 import { useNow, useSnapshot, useStore } from "../DashboardProvider";
 import { Card, EmptyState, PageHeader, Pill } from "../ui";
 import { ActuatorRow, HealthRing, LinkCard, PowerCard, ScenarioPanel, SensorTile, fleetSummary } from "../widgets";
 import { ActivityList } from "./ActivityView";
+import { Disclosure } from "../Disclosure";
 
 export function OverviewView() {
+  const { fmtRelative } = useDashboardFormatters();
+  const { tr } = useLanguage();
   const snap = useSnapshot();
   const store = useStore();
   const now = useNow();
@@ -26,33 +31,39 @@ export function OverviewView() {
   return (
     <div className="grid gap-6">
       <PageHeader
-        title={unit.name}
+        title={tr(unit.name)}
         description={
           <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
             <span className="inline-flex items-center gap-1">
               <MapPin className="size-3.5" aria-hidden="true" /> {unit.site} · {unit.location}, {unit.municipality}
             </span>
             <span className="inline-flex items-center gap-1">
-              <Fish className="size-3.5" aria-hidden="true" /> {unit.fishCount} tilapia · {unit.tankLiters.toLocaleString()} L tank
-            </span>
+              <Fish className="size-3.5" aria-hidden="true" /> {tr(unit.fishCount)} {tr("tilapia ·")}{" "}{tr(unit.tankLiters.toLocaleString())} {tr("L tank")}</span>
           </span>
         }
         actions={
           <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-2 ring-1 ring-forest-100">
             <HealthRing value={live.health} size={48} />
             <div className="text-xs">
-              <p className="font-semibold text-forest-900">Unit health</p>
-              <p className="text-muted">{live.history.length} readings · last {now ? fmtRelative(live.latest.t, now) : "—"}</p>
+              <p className="font-semibold text-forest-900">{tr("Farm condition")}</p>
+              <p className="text-muted">{tr(live.history.length)} {tr("readings · last")}{" "}{tr(now ? fmtRelative(live.latest.t, now) : "—")}</p>
             </div>
           </div>
         }
       />
 
+      <div className="grid gap-3 md:grid-cols-3">
+        {[
+          { href: "/dashboard/alerts", icon: Bell, title: "Check alerts", body: "See what needs attention and confirm after checking." },
+          { href: "/dashboard/harvest", icon: Sprout, title: "Record a harvest", body: "Add today's crop, weight and buyer." },
+          { href: "/dashboard/ledger", icon: Wallet, title: "Record income or an expense", body: "Keep a note of money received and spent." },
+        ].map(({ href, icon: Icon, title, body }) => <Link key={href} href={href} className="group flex items-start gap-3 rounded-2xl border border-forest-100 bg-white p-4 transition-colors hover:border-forest-300"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-leaf-50 text-leaf-700"><Icon className="size-5" /></span><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-forest-900">{tr(title)}</p><p className="mt-1 text-xs leading-relaxed text-muted">{tr(body)}</p></div><ArrowRight className="mt-1 size-4 shrink-0 text-forest-400" /></Link>)}
+      </div>
+
       {/* Fleet */}
       <section aria-labelledby="fleet-heading">
         <h2 id="fleet-heading" className="sr-only">
-          Fleet
-        </h2>
+          {tr("Fleet")}</h2>
         <ul className="grid gap-3 md:grid-cols-3">
           {fleetSummary(snap).map(({ unit: u, live: l, open }) => {
             const selected = u.id === unit.id;
@@ -78,9 +89,9 @@ export function OverviewView() {
                   <span className="flex flex-col items-end gap-1">
                     <Pill tone={offline ? "crit" : "leaf"}>
                       {offline ? <CloudOff className="size-3" aria-hidden="true" /> : <SatelliteDish className="size-3" aria-hidden="true" />}
-                      {offline ? "Offline" : "Online"}
+                      {tr(offline ? "Offline" : "Online")}
                     </Pill>
-                    {open > 0 ? <Pill tone="warn">{open} alert{open > 1 ? "s" : ""}</Pill> : <Pill>No alerts</Pill>}
+                    {open > 0 ? <Pill tone="warn">{tr(open)} {tr("alert")}{tr(open > 1 ? "s" : "")}</Pill> : <Pill>{tr("No alerts")}</Pill>}
                   </span>
                 </button>
               </li>
@@ -93,18 +104,17 @@ export function OverviewView() {
       <section aria-labelledby="sensors-heading">
         <div className="mb-3 flex items-center justify-between">
           <h2 id="sensors-heading" className="text-sm font-semibold text-forest-900">
-            Live sensors
-          </h2>
+            {tr("Live sensors")}</h2>
           <Link href="/dashboard/sensors" className="inline-flex items-center gap-1 text-xs font-semibold text-forest-600 hover:underline">
-            Charts & history <ArrowRight className="size-3.5" aria-hidden="true" />
+            {tr("Charts & history")}{" "}<ArrowRight className="size-3.5" aria-hidden="true" />
           </Link>
         </div>
         <div className="grid items-start gap-5 xl:grid-cols-3">
           {SENSOR_CATEGORIES.map((category) => (
             <div key={category.id} className="grid gap-3">
               <div className="border-l-2 border-forest-300 pl-3">
-                <h3 className="text-sm font-semibold text-forest-900">{category.label} <span className="ml-1 text-xs font-normal text-muted">{category.sensors.length} sensors</span></h3>
-                <p className="mt-1 text-xs leading-relaxed text-muted">{category.description}</p>
+                <h3 className="text-sm font-semibold text-forest-900">{tr(category.label)} <span className="ml-1 text-xs font-normal text-muted">{tr(category.sensors.length)} {tr("sensors")}</span></h3>
+                <p className="mt-1 text-xs leading-relaxed text-muted">{tr(category.description)}</p>
               </div>
               {category.sensors.map((k) => <SensorTile key={k} sensor={k} live={live} threshold={thresholds[k]} href={`/dashboard/sensors#${k}`} />)}
             </div>
@@ -115,11 +125,11 @@ export function OverviewView() {
       <div className="grid items-start gap-6 xl:grid-cols-3">
         <div className="grid content-start gap-6 xl:col-span-2">
           <Card
-            title="System controls"
-            description="Manual switches work only in manual mode — auto and schedule modes are driven by rules and the local clock."
+            title={tr("Equipment")}
+            description={tr("Switch equipment by hand, or let automatic rules and timers run it.")}
             action={
               <Link href="/dashboard/controls" className="inline-flex items-center gap-1 text-xs font-semibold text-forest-600 hover:underline">
-                All controls <ArrowRight className="size-3.5" aria-hidden="true" />
+                {tr("All controls")}{" "}<ArrowRight className="size-3.5" aria-hidden="true" />
               </Link>
             }
             bodyClassName="py-1"
@@ -135,11 +145,11 @@ export function OverviewView() {
           </Card>
 
           <Card
-            title="Needs attention"
-            description="Alerts stay open until a person acknowledges them."
+            title={tr("Needs attention")}
+            description={tr("Alerts stay open until a person acknowledges them.")}
             action={
               <Link href="/dashboard/alerts" className="inline-flex items-center gap-1 text-xs font-semibold text-forest-600 hover:underline">
-                All alerts <ArrowRight className="size-3.5" aria-hidden="true" />
+                {tr("All alerts")}{" "}<ArrowRight className="size-3.5" aria-hidden="true" />
               </Link>
             }
           >
@@ -150,30 +160,28 @@ export function OverviewView() {
                 ))}
               </ul>
             ) : (
-              <EmptyState icon={BellOff} title="All clear">
-                No alerts need acknowledgement for {unit.name}. Try a demo scenario to see the alarm flow.
-              </EmptyState>
+              <EmptyState icon={BellOff} title={tr("All clear")}>
+                {tr("No alerts need acknowledgement for")}{" "}{unit.name}{tr(". Try a demo scenario to see the alarm flow.")}</EmptyState>
             )}
           </Card>
         </div>
 
         <div className="grid content-start gap-6">
-          <ScenarioPanel unitId={unit.id} live={live} />
-          <PowerCard live={live} />
-          <LinkCard unitId={unit.id} live={live} />
+          <Disclosure title={tr("Power and connection details")}><PowerCard live={live} /><LinkCard unitId={unit.id} live={live} /></Disclosure>
+          <Disclosure title={tr("Try a demonstration")}><ScenarioPanel unitId={unit.id} live={live} /></Disclosure>
         </div>
       </div>
 
-      <Card
-        title="Recent activity"
+      <Disclosure title={tr("Recent activity")}><Card
+        title={tr("Recent activity")}
         action={
           <Link href="/dashboard/activity" className="inline-flex items-center gap-1 text-xs font-semibold text-forest-600 hover:underline">
-            Full log <ArrowRight className="size-3.5" aria-hidden="true" />
+            {tr("Full log")}{" "}<ArrowRight className="size-3.5" aria-hidden="true" />
           </Link>
         }
       >
         <ActivityList events={events} />
-      </Card>
+      </Card></Disclosure>
     </div>
   );
 }

@@ -66,13 +66,28 @@ draws it down, circulation steadies temperature and pH, and there is a day/night
 low-oxygen guard, dry-run protection and overflow protection.
 
 **Alarms** — each sensor has normal and critical limits (editable, or apply a crop preset). Alarms are debounced and
-use a deadband so a value hovering on a limit does not flap. Alerts are written in Tetum first with English beneath,
+use a deadband so a value hovering on a limit does not flap. Alerts follow the selected dashboard language,
 go out "via WhatsApp" (or "SMS fallback" during a simulated link outage), and stay open until a person acknowledges
 them. Unanswered alerts show the 2-hour response target from the pilot plan.
 
 **Sensor categories** — Overview and Live sensors group readings into Basic monitoring (air temperature,
 humidity, water level), Fish health (water temperature, dissolved oxygen), and Advanced water quality (pH, EC/TDS).
 Each sensor explains its purpose, operator response and care. Some readings support both fish and plants.
+
+**Navigation and languages** — the desktop sidebar groups pages into My farm, Harvest & money, and Help & settings.
+Minimize it to an icon rail; hover or focus an icon for its translated tooltip. Sidebar size, Simple view, and the
+Tetum / English / Bahasa Indonesia selection persist in browser preferences. Mobile uses a drawer with full labels,
+keyboard focus containment, Escape dismissal, and focus restoration. Simple view starts enabled, provides page guides
+and common-action shortcuts, and folds technical details into expandable sections. Turning it off reveals all details.
+
+All dashboard application copy uses `lib/i18n.ts` and the shared `lib/translations.ts` catalogue, including chart legends,
+forms, validation, activity messages, toasts, and assistant steps. Option values and saved records keep their canonical
+values when labels translate; user-entered notes and names stay as entered. Dates and USD formatting follow the selected
+language. New copy should be added to the catalogue with identical numbered placeholders. Tetum translations are a draft
+and should receive native-speaker review before public release. Language selection covers the dashboard, not marketing pages.
+
+Run `node node_modules/tsx/dist/cli.mjs --test scripts/dashboard.test.ts scripts/i18n.test.ts` for domain, translation
+placeholder, dynamic-message, formatting, and Indonesian assistant-routing checks.
 
 **Preset master data** (`/dashboard/presets`) — create, edit and duplicate crop/fish profiles by growth stage and
 growing system. Each template stores seven alarm ranges and equipment rules. Saving a template does not change

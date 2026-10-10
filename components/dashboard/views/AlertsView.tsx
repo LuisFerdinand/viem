@@ -1,5 +1,7 @@
 "use client";
 
+import { useLanguage } from "../LanguageProvider";
+
 import { BellOff, CheckCheck, Timer } from "lucide-react";
 import { useState } from "react";
 import { selectUnit } from "@/lib/sim/store";
@@ -12,6 +14,7 @@ type Tab = "attention" | "active" | "all";
 type Scope = "unit" | "all";
 
 export function AlertsView() {
+  const { tr } = useLanguage();
   const snap = useSnapshot();
   const store = useStore();
   const unit = selectUnit(snap);
@@ -36,9 +39,9 @@ export function AlertsView() {
   return (
     <div className="grid gap-6">
       <PageHeader
-        title="Alerts"
-        description="Rule-based alerts always fire — AI or not — and stay open until a person confirms what they found. Tetum first, English beneath."
-        actions={<Segmented label="Scope" value={scope} onChange={setScope} options={[{ value: "all", label: "All units" }, { value: "unit", label: unit.name }]} />}
+        title={tr("Alerts")}
+        description={tr("Read each alert, check the farm, then confirm what you found.")}
+        actions={<Segmented label={tr("Scope")} value={scope} onChange={setScope} options={[{ value: "all", label: "All units" }, { value: "unit", label: unit.name }]} />}
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -48,16 +51,16 @@ export function AlertsView() {
           { label: "Answered within 2 h", value: withinSla == null ? "—" : `${withinSla}%`, tone: "text-forest-900" },
         ].map((s) => (
           <div key={s.label} className="rounded-2xl border border-forest-100 bg-white p-4">
-            <p className="text-xs text-muted">{s.label}</p>
-            <p className={`mt-1 font-display text-3xl tabular ${s.tone}`}>{s.value}</p>
+            <p className="text-xs text-muted">{tr(s.label)}</p>
+            <p className={`mt-1 font-display text-3xl tabular ${s.tone}`}>{tr(s.value)}</p>
           </div>
         ))}
       </div>
 
-      <Card title="Alert log" description="Newest first. Cleared alerts still need a person to confirm them.">
+      <Card title={tr("Alert log")} description={tr("Newest first. Cleared alerts still need a person to confirm them.")}>
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <Segmented
-            label="Filter alerts"
+            label={tr("Filter alerts")}
             value={tab}
             onChange={setTab}
             options={[
@@ -73,8 +76,7 @@ export function AlertsView() {
               disabled={!!snap.pending.ack}
               className="inline-flex h-9 items-center gap-1.5 rounded-full px-4 text-xs font-semibold text-forest-700 ring-1 ring-forest-200 hover:bg-forest-50 disabled:opacity-50"
             >
-              <CheckCheck className="size-4" aria-hidden="true" /> Acknowledge {clearedUnacked.length} cleared
-            </button>
+              <CheckCheck className="size-4" aria-hidden="true" /> {tr("Acknowledge")}{" "}{tr(clearedUnacked.length)} {tr("cleared")}</button>
           )}
         </div>
         {shown.length ? (
@@ -84,14 +86,12 @@ export function AlertsView() {
             ))}
           </ul>
         ) : (
-          <EmptyState icon={BellOff} title={tab === "attention" ? "Nothing needs acknowledgement" : "No alerts here"}>
-            Turn on a demo scenario on the Overview page — for example a pump failure — to watch an alert arrive.
-          </EmptyState>
+          <EmptyState icon={BellOff} title={tr(tab === "attention" ? "Nothing needs acknowledgement" : "No alerts here")}>
+            {tr("Turn on a demo scenario on the Overview page — for example a pump failure — to watch an alert arrive.")}</EmptyState>
         )}
         <p className="mt-4 flex items-center gap-1.5 text-xs text-muted">
           <Timer className="size-3.5" aria-hidden="true" />
-          Pilot success measure: alerts answered in under 2 hours. Unanswered alerts escalate to a named VIEM agronomist.
-        </p>
+          {tr("Pilot success measure: alerts answered in under 2 hours. Unanswered alerts escalate to a named VIEM agronomist.")}</p>
       </Card>
     </div>
   );

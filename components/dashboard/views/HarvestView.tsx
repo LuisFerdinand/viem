@@ -1,5 +1,7 @@
 "use client";
 
+import { useLanguage, useDashboardFormatters } from "../LanguageProvider";
+
 import { Fish, Leaf, Plus, Sprout, Trash2, Truck, type LucideIcon } from "lucide-react";
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -7,7 +9,7 @@ import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAx
 import { BUYERS, CROP_BY_ID, CROPS, HARVEST_STATUSES, type CropCategory, type HarvestStatus } from "@/lib/domain";
 import { selectUnit } from "@/lib/sim/store";
 import type { HarvestDTO } from "@/lib/types";
-import { cn, fmtDate, kg, todayInDili, usd } from "@/lib/utils";
+import { cn, todayInDili } from "@/lib/utils";
 import { useSnapshot, useStore } from "../DashboardProvider";
 import { Card, EmptyState, Field, Input, PageHeader, Pill, Segmented, Select } from "../ui";
 
@@ -27,6 +29,8 @@ function weekStart(dateStr: string) {
 }
 
 function HarvestForm({ unitId }: { unitId: string }) {
+  const { usd } = useDashboardFormatters();
+  const { tr } = useLanguage();
   const store = useStore();
   const snap = useSnapshot();
   const [crop, setCrop] = useState(CROPS[0].id);
@@ -60,60 +64,62 @@ function HarvestForm({ unitId }: { unitId: string }) {
       }}
     >
       <div className="grid grid-cols-2 gap-3">
-        <Field label="Crop">
+        <Field label={tr("Crop")}>
           {(p) => (
             <Select {...p} value={crop} onChange={(e) => setCrop(e.target.value)}>
               {CROPS.map((c) => (
                 <option key={c.id} value={c.id}>
-                  {c.label}
+                  {tr(c.label)}
                 </option>
               ))}
             </Select>
           )}
         </Field>
-        <Field label="Weight (kg)" error={weightError}>
+        <Field label={tr("Weight (kg)")} error={weightError}>
           {(p) => (
-            <Input {...p} type="number" inputMode="decimal" step="0.1" min={0.1} max={1000} value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="e.g. 12.5" />
+            <Input {...p} type="number" inputMode="decimal" step="0.1" min={0.1} max={1000} value={weight} onChange={(e) => setWeight(e.target.value)} placeholder={tr("e.g. 12.5")} />
           )}
         </Field>
-        <Field label="Buyer">
+        <Field label={tr("Buyer")}>
           {(p) => (
             <Select {...p} value={buyer} onChange={(e) => setBuyer(e.target.value)}>
               {BUYERS.map((b) => (
                 <option key={b} value={b}>
-                  {b}
+                  {tr(b)}
                 </option>
               ))}
             </Select>
           )}
         </Field>
-        <Field label="Harvest date">
+        <Field label={tr("Harvest date")}>
           {(p) => <Input {...p} type="date" max={todayInDili()} value={date} onChange={(e) => setDate(e.target.value)} />}
         </Field>
       </div>
       {formError && (
         <p role="alert" className="text-xs font-medium text-crit-700">
-          {formError}
+          {tr(formError)}
         </p>
       )}
       <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-leaf-50 px-3 py-2 text-sm">
         <span className="text-leaf-700">
-          Buy-back floor price <strong>{usd(price, 2)}/kg</strong>
+          {tr("Buy-back floor price")}{" "}<strong>{tr(usd(price, 2))}{tr("/kg")}</strong>
         </span>
-        <span className="font-semibold text-forest-900 tabular">{Number.isFinite(w) && w > 0 ? usd(w * price, 2) : "—"}</span>
+        <span className="font-semibold text-forest-900 tabular">{tr(Number.isFinite(w) && w > 0 ? usd(w * price, 2) : "—")}</span>
       </div>
       <button
         type="submit"
         disabled={!!snap.pending["harvest:new"]}
         className="inline-flex h-11 items-center justify-center gap-1.5 rounded-full bg-forest-800 px-4 text-sm font-semibold text-white hover:bg-forest-700 disabled:opacity-50"
       >
-        <Plus className="size-4" aria-hidden="true" /> {snap.pending["harvest:new"] ? "Saving…" : "Log harvest"}
+        <Plus className="size-4" aria-hidden="true" /> {tr(snap.pending["harvest:new"] ? "Saving…" : "Log harvest")}
       </button>
     </form>
   );
 }
 
 export function HarvestView() {
+  const { fmtDate, usd, kg } = useDashboardFormatters();
+  const { tr } = useLanguage();
   const snap = useSnapshot();
   const store = useStore();
   const unit = selectUnit(snap);
@@ -165,52 +171,50 @@ export function HarvestView() {
   return (
     <div className="grid gap-6">
       <PageHeader
-        title="Harvest & buy-back"
-        description="VIEM buys every unit's harvest at a pre-agreed floor price, then sells to schools, hotels, supermarkets and restaurants."
-        actions={<Segmented label="Scope" value={scope} onChange={setScope} options={[{ value: "unit", label: unit.name }, { value: "all", label: "Whole network" }]} />}
+        title={tr("Harvest & sales")}
+        description={tr("Record what you harvested and track collection and buy-back payments.")}
+        actions={<Segmented label={tr("Scope")} value={scope} onChange={setScope} options={[{ value: "unit", label: unit.name }, { value: "all", label: "Whole network" }]} />}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-water-100 bg-water-50 px-4 py-3">
-        <p className="text-xs leading-relaxed text-water-700">Mark a buy-back as paid to record its income automatically in Buku Besar. Logged and collected harvests remain outstanding.</p>
-        <Link href="/dashboard/ledger" className="dash-secondary">Open Buku Besar</Link>
+        <p className="text-xs leading-relaxed text-water-700">{tr("Mark a buy-back as paid to record its income automatically in Buku Besar. Logged and collected harvests remain outstanding.")}</p>
+        <Link href="/dashboard/ledger" className="dash-secondary">{tr("Open Buku Besar")}</Link>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <div className="rounded-2xl border border-forest-100 bg-white p-4">
-          <p className="text-xs text-muted">Buy-back value, last 30 days</p>
-          <p className="mt-1 font-display text-3xl text-forest-900 tabular">{usd(sales30)}</p>
+          <p className="text-xs text-muted">{tr("Buy-back value, last 30 days")}</p>
+          <p className="mt-1 font-display text-3xl text-forest-900 tabular">{tr(usd(sales30))}</p>
           <div className="mt-3 h-2 overflow-hidden rounded-full bg-forest-100" aria-hidden="true">
             <div className="h-full rounded-full bg-leaf-500" style={{ width: `${Math.min(100, (sales30 / targetHi) * 100)}%` }} />
           </div>
           <p className="mt-1.5 text-xs text-muted">
-            {scope === "unit" && unit.kind === "hub"
+            {tr(scope === "unit" && unit.kind === "hub"
               ? "Hub production · Suku Unit target is US$350–500 / month"
-              : `Target ${usd(targetLo)}–${usd(targetHi)} / month${scope === "all" ? " across Suku Units" : ""}`}
+              : `Target ${usd(targetLo)}–${usd(targetHi)} / month${scope === "all" ? " across Suku Units" : ""}`)}
           </p>
         </div>
         <div className="rounded-2xl border border-forest-100 bg-white p-4">
-          <p className="text-xs text-muted">Harvested, last 30 days</p>
-          <p className="mt-1 font-display text-3xl text-forest-900 tabular">{kg(kg30)}</p>
-          <p className="mt-1.5 text-xs text-muted">{last30.length} harvest records</p>
+          <p className="text-xs text-muted">{tr("Harvested, last 30 days")}</p>
+          <p className="mt-1 font-display text-3xl text-forest-900 tabular">{tr(kg(kg30))}</p>
+          <p className="mt-1.5 text-xs text-muted">{tr(last30.length)} {tr("harvest records")}</p>
         </div>
         <div className="rounded-2xl border border-forest-100 bg-white p-4">
-          <p className="text-xs text-muted">Est. net to cooperative</p>
-          <p className={cn("mt-1 font-display text-3xl tabular", net >= 0 ? "text-forest-900" : "text-crit-700")}>{usd(net)}</p>
-          <p className="mt-1.5 text-xs text-muted">After ≈ US$110 inputs + US$25 VIEM support fee per unit</p>
+          <p className="text-xs text-muted">{tr("Est. net to cooperative")}</p>
+          <p className={cn("mt-1 font-display text-3xl tabular", net >= 0 ? "text-forest-900" : "text-crit-700")}>{tr(usd(net))}</p>
+          <p className="mt-1.5 text-xs text-muted">{tr("After ≈ US$110 inputs + US$25 VIEM support fee per unit")}</p>
         </div>
         <div className="rounded-2xl bg-forest-900 p-4 text-white">
           <p className="flex items-center gap-1.5 text-xs text-forest-200">
-            <Truck className="size-3.5" aria-hidden="true" /> Next collection run
-          </p>
-          <p className="mt-1 font-display text-3xl tabular">{kg(awaitingKg)}</p>
+            <Truck className="size-3.5" aria-hidden="true" /> {tr("Next collection run")}</p>
+          <p className="mt-1 font-display text-3xl tabular">{tr(kg(awaitingKg))}</p>
           <p className="mt-1.5 text-xs text-forest-200">
-            {awaiting.length} logged harvest{awaiting.length === 1 ? "" : "s"} waiting for pick-up
-          </p>
+            {tr(awaiting.length)} {tr("logged harvest")}{tr(awaiting.length === 1 ? "" : "s")} {tr("waiting for pick-up")}</p>
         </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-3">
-        <Card className="xl:col-span-2" title="Weekly harvest & forecast" description="Kilograms per week by category. Hatched bars forecast the next two weeks from the recent average.">
+        <Card className="xl:col-span-2" title={tr("Weekly harvest & forecast")} description={tr("Kilograms per week by category. Hatched bars forecast the next two weeks from the recent average.")}>
           <figure>
             <div className="h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
@@ -226,30 +230,29 @@ export function HarvestView() {
                   <YAxis tick={{ fontSize: 11, fill: "#4a6a61" }} tickLine={false} axisLine={false} unit=" kg" width={56} />
                   <Tooltip
                     cursor={{ fill: "#f2f7f4" }}
-                    formatter={(v, name) => [`${Number(v).toFixed(1)} kg`, name]}
-                    labelFormatter={(w) => `Week of ${fmtDate(`${String(w)}T00:00:00Z`)}`}
+                    formatter={(v, name) => [kg(Number(v)), name]}
+                    labelFormatter={(w) => tr("Week of {0}", [fmtDate(`${String(w)}T00:00:00Z`)])}
                     contentStyle={{ borderRadius: 12, border: "1px solid #e3eee8", fontSize: 12 }}
                   />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="greens" name="Greens" stackId="a" fill={CATEGORY_COLOR.greens} isAnimationActive={false} />
-                  <Bar dataKey="herbs" name="Herbs" stackId="a" fill={CATEGORY_COLOR.herbs} isAnimationActive={false} />
-                  <Bar dataKey="fish" name="Fish" stackId="a" fill={CATEGORY_COLOR.fish} isAnimationActive={false} />
-                  <Bar dataKey="forecast" name="Forecast" stackId="a" fill="url(#forecast-hatch)" radius={[6, 6, 0, 0]} isAnimationActive={false} />
+                  <Bar dataKey="greens" name={tr("Greens")} stackId="a" fill={CATEGORY_COLOR.greens} isAnimationActive={false} />
+                  <Bar dataKey="herbs" name={tr("Herbs")} stackId="a" fill={CATEGORY_COLOR.herbs} isAnimationActive={false} />
+                  <Bar dataKey="fish" name={tr("Fish")} stackId="a" fill={CATEGORY_COLOR.fish} isAnimationActive={false} />
+                  <Bar dataKey="forecast" name={tr("Forecast")} stackId="a" fill="url(#forecast-hatch)" radius={[6, 6, 0, 0]} isAnimationActive={false} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
             <figcaption className="sr-only">
-              Weekly harvest in kilograms for the last eight weeks, stacked by greens, herbs and fish, followed by a two-week forecast.
-            </figcaption>
+              {tr("Weekly harvest in kilograms for the last eight weeks, stacked by greens, herbs and fish, followed by a two-week forecast.")}</figcaption>
           </figure>
         </Card>
 
-        <Card title="Log a harvest" description={`${unit.name} · recorded at the buy-back floor price`}>
+        <Card title={tr("Log a harvest")} description={tr("{0} · recorded at the buy-back floor price", [unit.name])}>
           <HarvestForm unitId={unit.id} />
         </Card>
       </div>
 
-      <Card title="Harvest records" description="Move each record along as VIEM collects and pays — transparent sales records for the cooperative." bodyClassName="p-0">
+      <Card title={tr("Harvest records")} description={tr("Move each record along as VIEM collects and pays — transparent sales records for the cooperative.")} bodyClassName="p-0">
         {rows.length ? (
           <ul className="divide-y divide-forest-100">
             {rows.slice(0, 40).map((h) => {
@@ -263,16 +266,16 @@ export function HarvestView() {
                   </span>
                   <div className="min-w-[10rem] flex-1">
                     <p className="text-sm font-semibold text-forest-900">
-                      {kg(h.weightKg)} {crop?.label.toLowerCase() ?? h.crop}
-                      <span className="ml-2 font-normal text-muted">{CATEGORY_LABEL[h.category]}</span>
+                      {tr(kg(h.weightKg))} {tr(crop?.label.toLowerCase() ?? h.crop)}
+                      <span className="ml-2 font-normal text-muted">{tr(CATEGORY_LABEL[h.category])}</span>
                     </p>
                     <p className="text-xs text-muted">
-                      {fmtDate(`${h.harvestedAt}T00:00:00Z`)} · {h.buyer}
-                      {scope === "all" ? ` · ${unitName(h)}` : ""}
+                      {tr(fmtDate(`${h.harvestedAt}T00:00:00Z`))} · {tr(h.buyer)}
+                      {tr(scope === "all" ? ` · ${unitName(h)}` : "")}
                     </p>
                   </div>
-                  <span className="text-sm font-semibold text-forest-900 tabular">{usd(h.weightKg * h.pricePerKg, 2)}</span>
-                  <Pill tone={h.status === "paid" ? "leaf" : h.status === "collected" ? "water" : "warn"}>{STATUS_LABEL[h.status]}</Pill>
+                  <span className="text-sm font-semibold text-forest-900 tabular">{tr(usd(h.weightKg * h.pricePerKg, 2))}</span>
+                  <Pill tone={h.status === "paid" ? "leaf" : h.status === "collected" ? "water" : "warn"}>{tr(STATUS_LABEL[h.status])}</Pill>
                   <span className="flex items-center gap-1">
                     {next && (
                       <button
@@ -280,23 +283,21 @@ export function HarvestView() {
                         onClick={() => void store.setHarvestStatus(h.id, next)}
                         className="h-9 rounded-full px-3 text-xs font-semibold text-forest-700 ring-1 ring-forest-200 hover:bg-forest-50"
                       >
-                        Mark {STATUS_LABEL[next].toLowerCase()}
+                        {tr("Mark")}{" "}{tr(STATUS_LABEL[next].toLowerCase())}
                       </button>
                     )}
                     {confirmId === h.id ? (
                       <>
                         <button type="button" onClick={() => void store.deleteHarvest(h.id)} className="h-9 rounded-full bg-crit-700 px-3 text-xs font-semibold text-white hover:bg-crit-500">
-                          Delete
-                        </button>
+                          {tr("Delete")}</button>
                         <button type="button" onClick={() => setConfirmId(null)} className="h-9 rounded-full px-3 text-xs font-medium text-forest-700 hover:bg-forest-50">
-                          Keep
-                        </button>
+                          {tr("Keep")}</button>
                       </>
                     ) : (
                       <button
                         type="button"
                         onClick={() => setConfirmId(h.id)}
-                        aria-label={`Delete harvest record from ${fmtDate(`${h.harvestedAt}T00:00:00Z`)}`}
+                        aria-label={tr("Delete harvest record from {0}", [fmtDate(`${h.harvestedAt}T00:00:00Z`)])}
                         className="inline-flex size-9 items-center justify-center rounded-full text-forest-500 hover:bg-crit-50 hover:text-crit-700"
                       >
                         <Trash2 className="size-4" />
@@ -309,9 +310,8 @@ export function HarvestView() {
           </ul>
         ) : (
           <div className="p-5">
-            <EmptyState icon={Sprout} title="No harvests yet">
-              Log the first harvest with the form above.
-            </EmptyState>
+            <EmptyState icon={Sprout} title={tr("No harvests yet")}>
+              {tr("Log the first harvest with the form above.")}</EmptyState>
           </div>
         )}
       </Card>

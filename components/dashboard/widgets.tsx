@@ -1,17 +1,20 @@
 "use client";
 
+import { useLanguage, useDashboardFormatters } from "./LanguageProvider";
+
 import { BatteryCharging, BatteryLow, BatteryMedium, CloudOff, Gauge, SatelliteDish, Sun, Zap } from "lucide-react";
 import Link from "next/link";
 import { ACTUATORS, SENSORS, SENSOR_GUIDE, tdsFromEc, formatSensor, type ActuatorKind, type SensorKey } from "@/lib/domain";
 import { BYTES_PER_READING, SCENARIOS, type ControlReason } from "@/lib/sim/engine";
 import type { Snapshot, UnitLive } from "@/lib/sim/store";
 import type { ActuatorDTO, ThresholdDTO } from "@/lib/types";
-import { cn, fmtRelative } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { useNow, useStore } from "./DashboardProvider";
 import { ACTUATOR_ICON, SENSOR_ICON, SPINS } from "./icons";
 import { Card, Pill, RangeBar, Sparkline, StatusBadge, Switch } from "./ui";
 
 export function SensorTile({ sensor, live, threshold, href }: { sensor: SensorKey; live: UnitLive; threshold?: ThresholdDTO; href?: string }) {
+  const { tr } = useLanguage();
   const meta = SENSORS[sensor];
   const Icon = SENSOR_ICON[sensor];
   const value = live.latest[sensor];
@@ -25,31 +28,31 @@ export function SensorTile({ sensor, live, threshold, href }: { sensor: SensorKe
           <span className="flex size-8 items-center justify-center rounded-lg" style={{ backgroundColor: `${meta.color}14`, color: meta.color }}>
             <Icon className="size-4" aria-hidden="true" />
           </span>
-          {meta.short}
+          {tr(meta.short)}
         </p>
         <StatusBadge status={status} />
       </div>
-      <p className="mt-2 text-xs leading-relaxed text-muted">{SENSOR_GUIDE[sensor].purpose}</p>
+      <p className="mt-2 text-xs leading-relaxed text-muted">{tr(SENSOR_GUIDE[sensor].purpose)}</p>
       <p className="mt-3 flex items-baseline gap-1.5">
-        <span className="font-display text-[2rem] leading-none font-medium text-forest-950 tabular">{formatSensor(sensor, value)}</span>
-        <span className="text-sm text-muted">{meta.unit === "pH" ? "" : meta.unit}</span>
+        <span className="font-display text-[2rem] leading-none font-medium text-forest-950 tabular">{tr(formatSensor(sensor, value))}</span>
+        <span className="text-sm text-muted">{tr(meta.unit === "pH" ? "" : meta.unit)}</span>
         {Math.abs(delta) >= Math.pow(10, -meta.decimals) && (
           <span className={cn("ml-auto text-xs font-medium tabular", delta > 0 ? "text-forest-600" : "text-forest-600")}>
-            {delta > 0 ? "▲" : "▼"} {Math.abs(delta).toFixed(meta.decimals)}
-            <span className="sr-only"> change over the last 5 minutes</span>
+            {tr(delta > 0 ? "▲" : "▼")} {tr(Math.abs(delta).toFixed(meta.decimals))}
+            <span className="sr-only"> {tr("change over the last 5 minutes")}</span>
           </span>
         )}
       </p>
-      {sensor === "ec" && <p className="mt-1 text-xs text-muted">≈ {tdsFromEc(value)} ppm TDS</p>}
+      {sensor === "ec" && <p className="mt-1 text-xs text-muted">≈ {tr(tdsFromEc(value))} {tr("ppm TDS")}</p>}
       <Sparkline values={recent} color={meta.color} band={threshold ? [threshold.min, threshold.max] : undefined} className="mt-2" />
       {threshold && (
         <div className="mt-2">
           <RangeBar value={value} t={threshold} domain={meta.domain} color={meta.color} />
           <p className="mt-1.5 flex justify-between text-[0.7rem] text-muted tabular">
             <span>
-              Normal {threshold.min}–{threshold.max}
+              {tr("Normal")}{" "}{tr(threshold.min)}–{tr(threshold.max)}
             </span>
-            {!threshold.alarmEnabled && <span className="font-medium text-warn-700">Alarm off</span>}
+            {!threshold.alarmEnabled && <span className="font-medium text-warn-700">{tr("Alarm off")}</span>}
           </p>
         </div>
       )}
@@ -61,7 +64,7 @@ export function SensorTile({ sensor, live, threshold, href }: { sensor: SensorKe
     href && "hover:shadow-soft",
   );
   return href ? (
-    <Link href={href} className={cls} aria-label={`${meta.label}: ${formatSensor(sensor, value)} ${meta.unit}, ${status}`}>
+    <Link href={href} className={cls} aria-label={tr("{0}: {1} {2}, {3}", [tr(meta.label), formatSensor(sensor, value), meta.unit, status])}>
       {body}
     </Link>
   ) : (
@@ -78,6 +81,8 @@ const REASON_LABEL: Record<ControlReason, string> = {
 };
 
 export function ActuatorRow({ unitId, kind, dto, live, pending }: { unitId: string; kind: ActuatorKind; dto: ActuatorDTO; live: UnitLive; pending: boolean }) {
+  const { fmtRelative } = useDashboardFormatters();
+  const { tr } = useLanguage();
   const store = useStore();
   const now = useNow();
   const eff = live.actuators[kind];
@@ -96,26 +101,27 @@ export function ActuatorRow({ unitId, kind, dto, live, pending }: { unitId: stri
       </span>
       <div className="min-w-0 flex-1">
         <p className="flex flex-wrap items-center gap-2 text-sm font-semibold text-forest-900">
-          {ACTUATORS[kind].label}
-          <Pill tone={eff.reason === "interlock" ? "crit" : manual ? "neutral" : "water"}>{REASON_LABEL[eff.reason]}</Pill>
+          {tr(ACTUATORS[kind].label)}
+          <Pill tone={eff.reason === "interlock" ? "crit" : manual ? "neutral" : "water"}>{tr(REASON_LABEL[eff.reason])}</Pill>
         </p>
-        <p className="truncate text-xs text-muted" title={eff.detail}>
-          {eff.detail}
-          {changed && now ? ` · ${fmtRelative(changed, now)}` : ""}
+        <p className="truncate text-xs text-muted" title={tr(eff.detail)}>
+          {tr(eff.detail)}
+          {tr(changed && now ? ` · ${fmtRelative(changed, now)}` : "")}
         </p>
       </div>
-      <span className={cn("hidden text-xs font-bold sm:block", eff.on ? "text-leaf-700" : "text-forest-400")}>{eff.on ? "ON" : "OFF"}</span>
+      <span className={cn("hidden text-xs font-bold sm:block", eff.on ? "text-leaf-700" : "text-forest-400")}>{tr(eff.on ? "ON" : "OFF")}</span>
       <Switch
         checked={manual ? dto.isOn : eff.on}
         disabled={!manual || pending}
         onChange={(v) => store.setActuatorPower(unitId, kind, v)}
-        label={manual ? `Turn ${ACTUATORS[kind].label} ${dto.isOn ? "off" : "on"}` : `${ACTUATORS[kind].label} is controlled automatically`}
+        label={tr(manual ? `Turn ${ACTUATORS[kind].label} ${dto.isOn ? "off" : "on"}` : `${ACTUATORS[kind].label} is controlled automatically`)}
       />
     </li>
   );
 }
 
 export function PowerCard({ live }: { live: UnitLive }) {
+  const { tr } = useLanguage();
   const r = live.latest;
   const BatteryIcon = r.battery < 25 ? BatteryLow : r.solarW > r.loadW ? BatteryCharging : BatteryMedium;
   const items = [
@@ -125,14 +131,14 @@ export function PowerCard({ live }: { live: UnitLive }) {
     { icon: Gauge, label: "Pump current", value: `${r.pumpA.toFixed(1)} A`, tone: live.pumpFault ? "text-crit-700" : "text-forest-900" },
   ];
   return (
-    <Card title="Solar & power" description="Battery-backed so aeration survives the night and outages.">
+    <Card title={tr("Solar & power")} description={tr("Battery-backed so aeration survives the night and outages.")}>
       <dl className="grid grid-cols-2 gap-3">
         {items.map(({ icon: Icon, label, value, tone }) => (
           <div key={label} className="rounded-xl bg-forest-50 p-3">
             <dt className="flex items-center gap-1.5 text-xs text-muted">
-              <Icon className="size-3.5" aria-hidden="true" /> {label}
+              <Icon className="size-3.5" aria-hidden="true" /> {tr(label)}
             </dt>
-            <dd className={cn("mt-1 text-lg font-semibold tabular", tone)}>{value}</dd>
+            <dd className={cn("mt-1 text-lg font-semibold tabular", tone)}>{tr(value)}</dd>
           </div>
         ))}
       </dl>
@@ -144,75 +150,76 @@ export function PowerCard({ live }: { live: UnitLive }) {
       </div>
       {live.pumpFault && (
         <p className="mt-3 rounded-xl bg-crit-50 p-3 text-xs font-medium text-crit-700">
-          A pump is switched on but drawing no current — possible pump or power failure.
-        </p>
+          {tr("A pump is switched on but drawing no current — possible pump or power failure.")}</p>
       )}
     </Card>
   );
 }
 
 export function LinkCard({ unitId, live }: { unitId: string; live: UnitLive }) {
+  const { tr } = useLanguage();
   const store = useStore();
   const offline = live.scenarios.linkOutage;
   return (
     <Card
-      title="Vorakai link"
-      description="Offline-first: rules run on site, readings upload in small batches."
+      title={tr("Vorakai link")}
+      description={tr("Offline-first: rules run on site, readings upload in small batches.")}
       action={
         <Pill tone={offline ? "crit" : "leaf"}>
           {offline ? <CloudOff className="size-3.5" aria-hidden="true" /> : <SatelliteDish className="size-3.5" aria-hidden="true" />}
-          {offline ? "Offline" : "Online"}
+          {tr(offline ? "Offline" : "Online")}
         </Pill>
       }
     >
       <dl className="grid grid-cols-2 gap-3 text-sm">
         <div className="rounded-xl bg-forest-50 p-3">
-          <dt className="text-xs text-muted">Buffered on site</dt>
-          <dd className="mt-1 text-lg font-semibold text-forest-900 tabular">{live.buffered}</dd>
+          <dt className="text-xs text-muted">{tr("Buffered on site")}</dt>
+          <dd className="mt-1 text-lg font-semibold text-forest-900 tabular">{tr(live.buffered)}</dd>
         </div>
         <div className="rounded-xl bg-forest-50 p-3">
-          <dt className="text-xs text-muted">Uploaded this session</dt>
-          <dd className="mt-1 text-lg font-semibold text-forest-900 tabular">{(live.bytesSent / 1024).toFixed(1)} KB</dd>
+          <dt className="text-xs text-muted">{tr("Uploaded this session")}</dt>
+          <dd className="mt-1 text-lg font-semibold text-forest-900 tabular">{tr((live.bytesSent / 1024).toFixed(1))} {tr("KB")}</dd>
         </div>
       </dl>
       <p className="mt-3 text-xs text-muted">
-        ≈ {((BYTES_PER_READING * 120) / 1024).toFixed(1)} KB per hour at one reading every 30 s — well within a shared satellite link.
-      </p>
+        ≈ {tr(((BYTES_PER_READING * 120) / 1024).toFixed(1))} {tr("KB per hour at one reading every 30 s — well within a shared satellite link.")}</p>
       <button
         type="button"
         onClick={() => store.toggleScenario(unitId, "linkOutage")}
         className="mt-3 inline-flex min-h-10 items-center rounded-full px-3 text-xs font-semibold text-water-700 ring-1 ring-water-100 hover:bg-water-50"
       >
-        {offline ? "Restore the link" : "Simulate a link outage"}
+        {tr(offline ? "Restore the link" : "Simulate a link outage")}
       </button>
     </Card>
   );
 }
 
 export function ScenarioPanel({ unitId, live }: { unitId: string; live: UnitLive }) {
+  const { tr } = useLanguage();
   const store = useStore();
   return (
-    <Card title="Demo scenarios" description="Inject a fault and watch alarms, automation and interlocks respond.">
+    <Card title={tr("Demo scenarios")} description={tr("Inject a fault and watch alarms, automation and interlocks respond.")}>
       <ul className="grid gap-2">
         {SCENARIOS.filter((s) => s.key !== "linkOutage").map((s) => {
           const on = live.scenarios[s.key];
           return (
             <li key={s.key} className={cn("flex items-center gap-3 rounded-xl p-3 ring-1", on ? "bg-warn-50 ring-warn-500/30" : "ring-forest-100")}>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-forest-900">{s.label}</p>
-                <p className="text-xs text-muted">{s.description}</p>
+                <p className="text-sm font-semibold text-forest-900">{tr(s.label)}</p>
+                <p className="text-xs text-muted">{tr(s.description)}</p>
               </div>
-              <Switch checked={on} onChange={() => store.toggleScenario(unitId, s.key)} label={`Simulate ${s.label.toLowerCase()}`} />
+              <Switch checked={on} onChange={() => store.toggleScenario(unitId, s.key)} label={tr("Simulate {0}", [tr(s.label.toLowerCase())])} />
             </li>
           );
         })}
       </ul>
-      <p className="mt-3 text-xs text-muted">Tip: press the refresh button in the top bar to take a reading immediately.</p>
+      <p className="mt-3 text-xs text-muted">{tr("Tip: press the refresh button in the top bar to take a reading immediately.")}</p>
     </Card>
   );
 }
 
 export function HealthRing({ value, size = 56 }: { value: number; size?: number }) {
+  const { tr } = useLanguage();
   const r = 22;
   const c = 2 * Math.PI * r;
   const color = value >= 80 ? "#22935d" : value >= 55 ? "#d99315" : "#d8452f";
@@ -233,8 +240,8 @@ export function HealthRing({ value, size = 56 }: { value: number; size?: number 
           className="transition-[stroke-dashoffset] duration-700"
         />
       </svg>
-      <span className="text-sm font-bold text-forest-900 tabular">{value}</span>
-      <span className="sr-only"> out of 100 health score</span>
+      <span className="text-sm font-bold text-forest-900 tabular">{tr(value)}</span>
+      <span className="sr-only"> {tr("out of 100 health score")}</span>
     </span>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { useLanguage } from "../LanguageProvider";
+
 import { BellRing, Languages, MessageCircle, Pencil, Plus, Trash2, TriangleAlert, UserRoundCheck, Workflow } from "lucide-react";
 import { useState } from "react";
 import Link from "next/link";
@@ -20,12 +22,14 @@ import { cn } from "@/lib/utils";
 import { useSnapshot, useStore } from "../DashboardProvider";
 import { SENSOR_ICON } from "../icons";
 import { Card, EmptyState, Field, Input, PageHeader, Pill, RangeBar, Select, StatusBadge, Switch } from "../ui";
+import { Disclosure } from "../Disclosure";
 
 /* ------------------------------------------------------------------ */
 /* Alarm parameters                                                    */
 /* ------------------------------------------------------------------ */
 
 function ThresholdRow({ t, live }: { t: ThresholdDTO; live: UnitLive }) {
+  const { tr } = useLanguage();
   const store = useStore();
   const snap = useSnapshot();
   const meta = SENSORS[t.sensor];
@@ -81,24 +85,23 @@ function ThresholdRow({ t, live }: { t: ThresholdDTO; live: UnitLive }) {
           </span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-forest-900">
-              {meta.label} <span className="font-normal text-muted">({meta.unit})</span>
+              {tr(meta.label)} <span className="font-normal text-muted">({tr(meta.unit)})</span>
             </p>
             <p className="text-xs text-muted">
-              Now <strong className="text-forest-800 tabular">{formatSensor(t.sensor, value)}</strong> ·{" "}
+              {tr("Now")}{" "}<strong className="text-forest-800 tabular">{tr(formatSensor(t.sensor, value))}</strong> ·{" "}
               <span className="inline-block align-middle">
-                <StatusBadge status={preview} label={preview === "ok" ? "In range" : undefined} />
+                <StatusBadge status={preview} label={preview === "ok" ? tr("In range") : undefined} />
               </span>
             </p>
           </div>
           <label className="flex items-center gap-2 text-xs font-semibold text-forest-800">
-            Alarm
-            <Switch checked={enabled} onChange={setEnabled} label={`${meta.label} alarm ${enabled ? "on" : "off"}`} />
+            {tr("Alarm")}<Switch checked={enabled} onChange={setEnabled} label={tr("{0} alarm {1}", [tr(meta.label), enabled ? "on" : "off"])} />
           </label>
         </div>
 
         <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
           {fields.map((f) => (
-            <Field key={f.key} label={f.label}>
+            <Field key={f.key} label={tr(f.label)}>
               {(p) => (
                 <Input
                   {...p}
@@ -121,7 +124,7 @@ function ThresholdRow({ t, live }: { t: ThresholdDTO; live: UnitLive }) {
 
         {(error || (dirty && problem)) && (
           <p role="alert" className="mt-3 text-xs font-medium text-crit-700">
-            {error ?? problem}
+            {tr(error ?? problem)}
           </p>
         )}
 
@@ -136,15 +139,14 @@ function ThresholdRow({ t, live }: { t: ThresholdDTO; live: UnitLive }) {
               }}
               className="h-9 rounded-full px-3 text-xs font-medium text-forest-700 hover:bg-forest-50"
             >
-              Discard
-            </button>
+              {tr("Discard")}</button>
           )}
           <button
             type="submit"
             disabled={!dirty || pending || !!problem}
             className="h-9 rounded-full bg-forest-800 px-4 text-xs font-semibold text-white hover:bg-forest-700 disabled:opacity-40"
           >
-            {pending ? "Saving…" : "Save"}
+            {tr(pending ? "Saving…" : "Save")}
           </button>
         </div>
       </form>
@@ -182,6 +184,7 @@ function RuleForm({
   onCancel?: () => void;
   pending: boolean;
 }) {
+  const { tr } = useLanguage();
   const [d, setD] = useState<RuleDraft>(initial);
   const [error, setError] = useState<string | null>(null);
   const unit = SENSORS[d.sensor].unit;
@@ -200,63 +203,61 @@ function RuleForm({
       }}
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-        <Field label="Turn this">
+        <Field label={tr("Turn this")}>
           {(p) => (
             <Select {...p} value={d.actuator} onChange={(e) => set("actuator", e.target.value as ActuatorKind)}>
               {ACTUATOR_KINDS.map((k) => (
                 <option key={k} value={k}>
-                  {ACTUATORS[k].label}
+                  {tr(ACTUATORS[k].label)}
                 </option>
               ))}
             </Select>
           )}
         </Field>
-        <Field label="ON when">
+        <Field label={tr("ON when")}>
           {(p) => (
             <Select {...p} value={d.sensor} onChange={(e) => set("sensor", e.target.value as SensorKey)}>
               {SENSOR_KEYS.map((k) => (
                 <option key={k} value={k}>
-                  {SENSORS[k].label}
+                  {tr(SENSORS[k].label)}
                 </option>
               ))}
             </Select>
           )}
         </Field>
-        <Field label="is">
+        <Field label={tr("is")}>
           {(p) => (
             <Select {...p} value={d.condition} onChange={(e) => set("condition", e.target.value as RuleCondition)}>
-              <option value="below">below</option>
-              <option value="above">above</option>
+              <option value="below">{tr("below")}</option>
+              <option value="above">{tr("above")}</option>
             </Select>
           )}
         </Field>
-        <Field label={`Turn-on value (${unit})`}>
+        <Field label={tr("Turn-on value ({0})", [unit])}>
           {(p) => <Input {...p} type="number" inputMode="decimal" step="any" value={d.onValue} onChange={(e) => set("onValue", e.target.value)} />}
         </Field>
-        <Field label={`OFF when ${d.condition === "below" ? "above" : "below"} (${unit})`}>
+        <Field label={tr("OFF when {0} ({1})", [tr(d.condition === "below" ? "above" : "below"), unit])}>
           {(p) => <Input {...p} type="number" inputMode="decimal" step="any" value={d.offValue} onChange={(e) => set("offValue", e.target.value)} />}
         </Field>
       </div>
       <p className="text-xs text-muted">
-        The gap between the two values (hysteresis) stops the equipment from flicking on and off around one number.
-      </p>
+        {tr("The gap between the two values (hysteresis) stops the equipment from flicking on and off around one number.")}</p>
       {error && (
         <p role="alert" className="text-xs font-medium text-crit-700">
-          {error}
+          {tr(error)}
         </p>
       )}
       <div className="flex justify-end gap-2">
         {onCancel && (
           <button type="button" onClick={onCancel} className="h-10 rounded-full px-4 text-sm font-medium text-forest-700 hover:bg-white">
-            Cancel
-          </button>
+            {tr("Cancel")}</button>
         )}
         <button
           type="submit"
           disabled={pending}
           className="inline-flex h-10 items-center gap-1.5 rounded-full bg-forest-800 px-4 text-sm font-semibold text-white hover:bg-forest-700 disabled:opacity-50"
         >
-          {pending ? "Saving…" : submitLabel}
+          {tr(pending ? "Saving…" : submitLabel)}
         </button>
       </div>
     </form>
@@ -264,6 +265,7 @@ function RuleForm({
 }
 
 function RuleRow({ rule, modeOk }: { rule: RuleDTO; modeOk: boolean }) {
+  const { tr } = useLanguage();
   const store = useStore();
   const snap = useSnapshot();
   const [editing, setEditing] = useState(false);
@@ -276,7 +278,7 @@ function RuleRow({ rule, modeOk }: { rule: RuleDTO; modeOk: boolean }) {
       <li>
         <RuleForm
           initial={{ actuator: rule.actuator, sensor: rule.sensor, condition: rule.condition, onValue: String(rule.onValue), offValue: String(rule.offValue) }}
-          submitLabel="Save rule"
+          submitLabel={tr("Save rule")}
           pending={pending}
           onCancel={() => setEditing(false)}
           onSubmit={async (d) => {
@@ -294,46 +296,43 @@ function RuleRow({ rule, modeOk }: { rule: RuleDTO; modeOk: boolean }) {
       <Switch
         checked={rule.enabled}
         onChange={(v) => void store.updateRule({ ...rule, enabled: v })}
-        label={`${rule.enabled ? "Pause" : "Enable"} rule for ${ACTUATORS[rule.actuator].label}`}
+        label={tr("{0} rule for {1}", [rule.enabled ? "Pause" : "Enable", tr(ACTUATORS[rule.actuator].label)])}
         disabled={pending}
       />
       <div className="min-w-0 flex-1">
         <p className="text-sm text-forest-900">
-          <strong>{ACTUATORS[rule.actuator].label}</strong> ON when {m.label.toLowerCase()} is {rule.condition}{" "}
+          <strong>{tr(ACTUATORS[rule.actuator].label)}</strong> {tr("ON when")}{" "}{tr(m.label.toLowerCase())} {tr("is")}{" "}{tr(rule.condition)}{" "}
           <strong className="tabular">
-            {rule.onValue} {m.unit}
+            {tr(rule.onValue)} {tr(m.unit)}
           </strong>
-          , OFF when it {rule.condition === "below" ? "rises above" : "falls below"}{" "}
+          {tr(", OFF when it")}{" "}{tr(rule.condition === "below" ? "rises above" : "falls below")}{" "}
           <strong className="tabular">
-            {rule.offValue} {m.unit}
+            {tr(rule.offValue)} {tr(m.unit)}
           </strong>
         </p>
         {rule.enabled && !modeOk && (
           <p className="mt-1 flex items-center gap-1 text-xs font-medium text-warn-700">
-            <TriangleAlert className="size-3.5" aria-hidden="true" /> {ACTUATORS[rule.actuator].label} is not in Auto mode, so this rule is waiting.
-          </p>
+            <TriangleAlert className="size-3.5" aria-hidden="true" /> {tr(ACTUATORS[rule.actuator].label)} {tr("is not in Auto mode, so this rule is waiting.")}</p>
         )}
       </div>
       {confirmDelete ? (
         <span className="flex items-center gap-2">
-          <span className="text-xs text-forest-800">Delete this rule?</span>
+          <span className="text-xs text-forest-800">{tr("Delete this rule?")}</span>
           <button
             type="button"
             onClick={() => void store.deleteRule(rule)}
             className="h-9 rounded-full bg-crit-700 px-3 text-xs font-semibold text-white hover:bg-crit-500"
           >
-            Delete
-          </button>
+            {tr("Delete")}</button>
           <button type="button" onClick={() => setConfirmDelete(false)} className="h-9 rounded-full px-3 text-xs font-medium text-forest-700 hover:bg-forest-50">
-            Keep
-          </button>
+            {tr("Keep")}</button>
         </span>
       ) : (
         <span className="flex gap-1">
           <button
             type="button"
             onClick={() => setEditing(true)}
-            aria-label="Edit rule"
+            aria-label={tr("Edit rule")}
             className="inline-flex size-9 items-center justify-center rounded-full text-forest-600 hover:bg-forest-50"
           >
             <Pencil className="size-4" />
@@ -341,7 +340,7 @@ function RuleRow({ rule, modeOk }: { rule: RuleDTO; modeOk: boolean }) {
           <button
             type="button"
             onClick={() => setConfirmDelete(true)}
-            aria-label="Delete rule"
+            aria-label={tr("Delete rule")}
             className="inline-flex size-9 items-center justify-center rounded-full text-crit-700 hover:bg-crit-50"
           >
             <Trash2 className="size-4" />
@@ -353,6 +352,7 @@ function RuleRow({ rule, modeOk }: { rule: RuleDTO; modeOk: boolean }) {
 }
 
 export function AutomationView() {
+  const { tr } = useLanguage();
   const snap = useSnapshot();
   const store = useStore();
   const unit = selectUnit(snap);
@@ -371,14 +371,14 @@ export function AutomationView() {
   return (
     <div className="grid gap-6">
       <PageHeader
-        title="Automation & alarms"
-        description={`${unit.name} · alarm parameters decide when a Tetum alert is sent; rules decide what the equipment does about it.`}
-        actions={<Link href="/dashboard/presets" className="dash-secondary">Manage preset master data</Link>}
+        title={tr("Automatic care")}
+        description={tr("Use a growing profile or set your own alarm limits and equipment rules.")}
+        actions={<Link href="/dashboard/presets" className="dash-secondary">{tr("Manage preset master data")}</Link>}
       />
 
       <Card
-        title="Alarm parameters"
-        description="Readings outside the normal band raise a warning; outside the critical limits, a critical alert."
+        title={tr("Alarm parameters")}
+        description={tr("Readings outside the normal band raise a warning; outside the critical limits, a critical alert.")}
         action={
           <form
             className="flex flex-wrap items-center gap-2"
@@ -388,12 +388,11 @@ export function AutomationView() {
             }}
           >
             <label htmlFor="preset" className="sr-only">
-              Crop preset
-            </label>
+              {tr("Crop preset")}</label>
             <Select id="preset" value={presetMeta.id} onChange={(e) => setPreset(e.target.value)} className="h-9 w-auto max-w-full rounded-full text-xs">
               {snap.data.presets.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.label}
+                  {tr(p.label)}
                 </option>
               ))}
             </Select>
@@ -402,26 +401,25 @@ export function AutomationView() {
               disabled={!!snap.pending[`preset:${unit.id}`]}
               className="h-9 rounded-full bg-leaf-400 px-4 text-xs font-semibold text-forest-950 hover:bg-leaf-300 disabled:opacity-50"
             >
-              Apply preset
-            </button>
+              {tr("Apply preset")}</button>
           </form>
         }
       >
         <p className="mb-4 rounded-xl bg-leaf-50 px-3 py-2 text-xs text-leaf-700">
-          <strong>{presetMeta.label} · {presetMeta.stage} · {presetMeta.system}:</strong> {presetMeta.description}
+          <strong>{tr(presetMeta.label)} · {tr(presetMeta.stage)} · {tr(presetMeta.system)}:</strong> {tr(presetMeta.description)}
         </p>
         <div className="mb-5 grid gap-3 rounded-xl border border-forest-100 p-4">
-          <p className="text-xs text-muted">Applying this preset replaces all seven alarm ranges and enables their alarms. Values are illustrative demo settings.</p>
-          <label className="flex items-start gap-2 text-sm text-forest-800"><input type="checkbox" checked={includeRules} onChange={(e) => setIncludeRules(e.target.checked)} className="mt-1 size-4 accent-forest-700" />Also replace this unit's automation rules and switch the template's enabled equipment to Auto mode.</label>
-          <div className="flex flex-wrap gap-2">{["ph", "ec", "do"].map((key) => { const k = key as SensorKey; return <Pill key={k}>{SENSORS[k].label}: {presetMeta.values[k].min}–{presetMeta.values[k].max} {SENSORS[k].unit}</Pill>; })}</div>
-          {includeRules && <ul className="grid gap-1 text-xs text-muted">{presetMeta.rules.map((r, i) => <li key={i}>{ACTUATORS[r.actuator].label}: ON {SENSORS[r.sensor].short} {r.condition} {r.onValue}, OFF at {r.offValue} {SENSORS[r.sensor].unit}{r.enabled ? "" : " (disabled)"}</li>)}</ul>}
+          <p className="text-xs text-muted">{tr("Applying this preset replaces all seven alarm ranges and enables their alarms. Values are illustrative demo settings.")}</p>
+          <label className="flex items-start gap-2 text-sm text-forest-800"><input type="checkbox" checked={includeRules} onChange={(e) => setIncludeRules(e.target.checked)} className="mt-1 size-4 accent-forest-700" />{tr("Also replace this unit's automation rules and switch the template's enabled equipment to Auto mode.")}</label>
+          <div className="flex flex-wrap gap-2">{["ph", "ec", "do"].map((key) => { const k = key as SensorKey; return <Pill key={k}>{tr(SENSORS[k].label)}: {tr(presetMeta.values[k].min)}–{tr(presetMeta.values[k].max)} {tr(SENSORS[k].unit)}</Pill>; })}</div>
+          {includeRules && <ul className="grid gap-1 text-xs text-muted">{presetMeta.rules.map((r, i) => <li key={i}>{tr(ACTUATORS[r.actuator].label)}{tr(": ON")}{" "}{tr(SENSORS[r.sensor].short)} {tr(r.condition)} {tr(r.onValue)}{tr(", OFF at")}{" "}{tr(r.offValue)} {tr(SENSORS[r.sensor].unit)}{tr(r.enabled ? "" : " (disabled)")}</li>)}</ul>}
         </div>
-        <ul className="grid gap-3 xl:grid-cols-2">
+        <Disclosure title={tr("Change individual alarm limits")}><ul className="grid gap-3 xl:grid-cols-2">
           {SENSOR_KEYS.map((k) => {
             const t = th[k];
             return t ? <ThresholdRow key={`${t.id}-${t.min}-${t.max}-${t.criticalMin}-${t.criticalMax}-${t.alarmEnabled}`} t={t} live={live} /> : null;
           })}
-        </ul>
+        </ul></Disclosure>
       </Card>
 
       <Card
@@ -429,10 +427,9 @@ export function AutomationView() {
         className="scroll-mt-24"
         title={
           <span className="flex items-center gap-2">
-            <Workflow className="size-4 text-water-700" aria-hidden="true" /> Automation rules
-          </span>
+            <Workflow className="size-4 text-water-700" aria-hidden="true" /> {tr("Automation rules")}</span>
         }
-        description="Used when an actuator is in Auto mode. Evaluated on every reading — on the controller in production."
+        description={tr("Used when an actuator is in Auto mode. Evaluated on every reading — on the controller in production.")}
         action={
           !adding && (
             <button
@@ -440,8 +437,7 @@ export function AutomationView() {
               onClick={() => setAdding(true)}
               className="inline-flex h-9 items-center gap-1.5 rounded-full bg-forest-800 px-4 text-xs font-semibold text-white hover:bg-forest-700"
             >
-              <Plus className="size-4" aria-hidden="true" /> Add rule
-            </button>
+              <Plus className="size-4" aria-hidden="true" /> {tr("Add rule")}</button>
           )
         }
       >
@@ -449,7 +445,7 @@ export function AutomationView() {
           <div className="mb-4">
             <RuleForm
               initial={{ actuator: "aeration", sensor: "do", condition: "below", onValue: "5.5", offValue: "7.2" }}
-              submitLabel="Add rule"
+              submitLabel={tr("Add rule")}
               pending={!!snap.pending["rule:new"]}
               onCancel={() => setAdding(false)}
               onSubmit={async (d) => {
@@ -475,21 +471,20 @@ export function AutomationView() {
             ))}
           </ul>
         ) : (
-          <EmptyState icon={Workflow} title="No rules yet">
-            Add a rule such as “aeration ON when oxygen is below 5.5 mg/L”.
-          </EmptyState>
+          <EmptyState icon={Workflow} title={tr("No rules yet")}>
+            {tr("Add a rule such as “aeration ON when oxygen is below 5.5 mg/L”.")}</EmptyState>
         )}
         <div className="mt-5 flex flex-wrap gap-2 border-t border-forest-100 pt-4 text-xs text-muted">
-          <span className="font-semibold text-forest-800">Modes right now:</span>
+          <span className="font-semibold text-forest-800">{tr("Modes right now:")}</span>
           {ACTUATOR_KINDS.map((k) => (
             <Pill key={k} tone={modeOf(k) === "auto" ? "water" : "neutral"}>
-              {ACTUATORS[k].label}: {modeOf(k)}
+              {tr(ACTUATORS[k].label)}: {tr(modeOf(k))}
             </Pill>
           ))}
         </div>
       </Card>
 
-      <Card title="Alert delivery" description="How operators hear about alarms (simulated in this demo).">
+      <Disclosure title={tr("How alerts reach you")}><Card title={tr("Alert delivery")} description={tr("How operators hear about alarms (simulated in this demo).")}>
         <ul className="grid gap-3 md:grid-cols-4">
           {[
             { icon: MessageCircle, title: "WhatsApp first", body: "Tulun VIEM sends the alert in plain Tetum with first-response steps." },
@@ -499,12 +494,12 @@ export function AutomationView() {
           ].map(({ icon: Icon, title, body }) => (
             <li key={title} className="rounded-xl bg-forest-50 p-4">
               <Icon className="size-5 text-forest-600" aria-hidden="true" />
-              <p className="mt-2 text-sm font-semibold text-forest-900">{title}</p>
-              <p className="mt-1 text-xs leading-relaxed text-muted">{body}</p>
+              <p className="mt-2 text-sm font-semibold text-forest-900">{tr(title)}</p>
+              <p className="mt-1 text-xs leading-relaxed text-muted">{tr(body)}</p>
             </li>
           ))}
         </ul>
-      </Card>
+      </Card></Disclosure>
     </div>
   );
 }

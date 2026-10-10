@@ -3,6 +3,7 @@
 import { createContext, use, useEffect, useState, useSyncExternalStore, type ReactNode } from "react";
 import { DashboardStore, type Snapshot } from "@/lib/sim/store";
 import type { DashboardData } from "@/lib/types";
+import { LanguageProvider } from "./LanguageProvider";
 
 const StoreContext = createContext<DashboardStore | null>(null);
 
@@ -12,7 +13,7 @@ export function DashboardProvider({ initialData, children }: { initialData: Dash
     store.start();
     return () => store.stop();
   }, [store]);
-  return <StoreContext value={store}>{children}</StoreContext>;
+  return <StoreContext value={store}><LanguageProvider>{children}</LanguageProvider></StoreContext>;
 }
 
 export function useStore() {

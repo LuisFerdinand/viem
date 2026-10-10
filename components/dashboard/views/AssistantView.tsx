@@ -1,5 +1,7 @@
 "use client";
 
+import { useLanguage } from "../LanguageProvider";
+
 import { BookOpen, Check, Languages, MessageSquareText, Phone, ScrollText, Send, ShieldAlert, UserRound, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { LogoMark } from "@/components/ui/Logo";
@@ -8,9 +10,9 @@ import { MANUAL, answerFromManual } from "@/lib/manual";
 import { selectUnit, unacknowledged } from "@/lib/sim/store";
 import { cn, fmtTime } from "@/lib/utils";
 import { useSnapshot, useStore } from "../DashboardProvider";
-import { Card, PageHeader, Pill, Segmented } from "../ui";
-
-type Lang = "tet" | "en";
+import { Card, PageHeader, Pill } from "../ui";
+import { Disclosure } from "../Disclosure";
+import type { AlertDTO } from "@/lib/types";
 
 interface Msg {
   id: number;
@@ -23,16 +25,18 @@ interface Msg {
   confidence?: number;
   escalate?: string;
   kind?: "answer" | "blocked" | "unsure" | "status";
+  alerts?: AlertDTO[];
+  farm?: string;
 }
 
 const MAY = ["Explain sensor alerts and first-response steps", "Answer from the vetted VIEM manual, with sources", "Escalate to a named VIEM agronomist"];
 const MAY_NOT = ["Recommend chemicals, medicines or pesticides", "Invent answers outside the manual", "Close an alert without human confirmation"];
 
 export function AssistantView() {
+  const { tr, language: lang } = useLanguage();
   const snap = useSnapshot();
   const store = useStore();
   const unit = selectUnit(snap);
-  const [lang, setLang] = useState<Lang>("tet");
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const [messages, setMessages] = useState<Msg[]>(() => [
@@ -107,6 +111,7 @@ export function AssistantView() {
       open.length
         ? {
             kind: "status",
+            alerts: open, farm: unit.name,
             tet: `${unit.name}: alerta ${open.length}. ${open.map((a) => a.messageTet).join(" ")}`,
             en: `${unit.name}: ${open.length} open alert${open.length > 1 ? "s" : ""}. ${open.map((a) => `${ALERT_LABEL[a.code]} — ${a.messageEn}`).join(" ")}`,
             source: "Live sensor alerts",
@@ -114,6 +119,7 @@ export function AssistantView() {
           }
         : {
             kind: "status",
+            alerts: [], farm: unit.name,
             tet: `${unit.name}: buat hotu di'ak. La iha alerta ne'ebé loke.`,
             en: `${unit.name}: everything looks good. No open alerts.`,
             source: "Live sensor alerts",
@@ -121,39 +127,32 @@ export function AssistantView() {
     );
   }
 
-  const primary = (m: Msg) => (lang === "tet" ? m.tet : m.en);
-  const secondary = (m: Msg) => (lang === "tet" ? m.en : m.tet);
+  const primary = (m: Msg) => {
+    if (m.from === "user") return lang === "tet" ? m.tet : m.en;
+    if (lang === "tet") return m.tet;
+    if (m.alerts) return m.alerts.length ? `${tr("{0}: {1} open alerts.", [m.farm, m.alerts.length])} ${m.alerts.map((a) => `${tr(ALERT_LABEL[a.code])} — ${tr(a.messageEn)}`).join(" ")}` : tr("{0}: everything looks good. No open alerts.", [m.farm]);
+    return tr(m.en);
+  };
 
   return (
     <div className="grid gap-6">
       <PageHeader
-        title="Tulun VIEM"
-        description="Preview of the Tetum-first farm assistant operators use on WhatsApp. It answers only from VIEM's vetted manual and hands over to a person when unsure."
-        actions={
-          <Segmented
-            label="Assistant language"
-            value={lang}
-            onChange={setLang}
-            options={[
-              { value: "tet", label: "Tetum" },
-              { value: "en", label: "English" },
-            ]}
-          />
-        }
+        title={tr("Tulun VIEM")}
+        description={tr("Ask about fish, plants or alerts. Answers come from the VIEM farm manual.")}
       />
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,1fr)]">
-        <section aria-label="Chat with Tulun VIEM" className="flex h-[40rem] flex-col overflow-hidden rounded-3xl border border-forest-100 bg-[#efeae2] shadow-soft">
+        <section aria-label={tr("Chat with Tulun VIEM")} className="flex h-[40rem] flex-col overflow-hidden rounded-3xl border border-forest-100 bg-[#efeae2] shadow-soft">
           <header className="flex items-center gap-3 bg-forest-800 px-4 py-3 text-white">
             <span className="flex size-10 items-center justify-center rounded-full bg-white">
               <LogoMark className="h-6 w-auto" />
             </span>
             <div className="leading-tight">
-              <p className="font-semibold">Tulun VIEM</p>
-              <p className="text-xs text-forest-200">{typing ? "hakerek hela… / typing…" : `Helping ${unit.name}`}</p>
+              <p className="font-semibold">{tr("Tulun VIEM")}</p>
+              <p className="text-xs text-forest-200">{typing ? tr("Typing…") : tr("Helping {0}", [unit.name])}</p>
             </div>
             <Pill tone="leaf" className="ml-auto">
-              <Languages className="size-3" aria-hidden="true" /> {lang === "tet" ? "Tetum" : "English"}
+              <Languages className="size-3" aria-hidden="true" /> {lang === "tet" ? "Tetum" : lang === "id" ? "Bahasa Indonesia" : "English"}
             </Pill>
           </header>
 
@@ -169,22 +168,16 @@ export function AssistantView() {
                 >
                   {m.kind === "blocked" && (
                     <p className="mb-1 flex items-center gap-1 text-[0.7rem] font-bold tracking-wide text-crit-700 uppercase">
-                      <ShieldAlert className="size-3.5" aria-hidden="true" /> Guardrail
-                    </p>
+                      <ShieldAlert className="size-3.5" aria-hidden="true" /> {tr("Guardrail")}</p>
                   )}
-                  <p lang={lang === "tet" ? "tet" : "en"} className="text-forest-950">
+                  <p lang={lang} className="text-forest-950">
                     {primary(m)}
                   </p>
-                  {secondary(m) !== primary(m) && (
-                    <p lang={lang === "tet" ? "en" : "tet"} className="mt-1 text-xs text-muted italic">
-                      {secondary(m)}
-                    </p>
-                  )}
                   {m.steps && (
                     <ol className="mt-2 space-y-1 border-t border-forest-100 pt-2 text-xs text-forest-800">
                       {m.steps.map((s, i) => (
                         <li key={s} className="flex gap-1.5">
-                          <span className="font-semibold text-forest-500">{i + 1}.</span> {s}
+                          <span className="font-semibold text-forest-500">{tr(i + 1)}.</span> {tr(s)}
                         </li>
                       ))}
                     </ol>
@@ -193,12 +186,12 @@ export function AssistantView() {
                     <p className="mt-2 flex flex-wrap items-center gap-1.5">
                       {m.source && (
                         <span className="inline-flex items-center gap-1 rounded-full bg-forest-50 px-2 py-0.5 text-[0.68rem] font-medium text-forest-700">
-                          <BookOpen className="size-3" aria-hidden="true" /> {m.source}
+                          <BookOpen className="size-3" aria-hidden="true" /> {tr(m.source)}
                         </span>
                       )}
                       {m.confidence != null && (
                         <span className="rounded-full bg-forest-50 px-2 py-0.5 text-[0.68rem] font-medium text-forest-700">
-                          Confidence {Math.round(m.confidence * 100)}%
+                          {tr("Confidence")}{" "}{tr(Math.round(m.confidence * 100))}%
                         </span>
                       )}
                     </p>
@@ -217,15 +210,14 @@ export function AssistantView() {
                       }}
                       className="mt-2 inline-flex min-h-9 items-center gap-1.5 rounded-full bg-forest-800 px-3 text-xs font-semibold text-white hover:bg-forest-700"
                     >
-                      <UserRound className="size-3.5" aria-hidden="true" /> Haruka ba agrónomu · Ask an agronomist
-                    </button>
+                      <UserRound className="size-3.5" aria-hidden="true" /> {tr("Ask an agronomist")}</button>
                   )}
-                  {m.t > 0 && <p className="mt-1 text-right text-[0.65rem] text-muted">{fmtTime(m.t)}</p>}
+                  {m.t > 0 && <p className="mt-1 text-right text-[0.65rem] text-muted">{tr(fmtTime(m.t))}</p>}
                 </div>
               </div>
             ))}
             {typing && (
-              <div className="flex justify-start" aria-label="Tulun VIEM is typing">
+              <div className="flex justify-start" aria-label={tr("Tulun VIEM is typing")}>
                 <span className="flex gap-1 rounded-2xl rounded-tl-sm bg-white px-4 py-3 shadow-sm">
                   {[0, 1, 2].map((i) => (
                     <span key={i} className="size-1.5 animate-bounce rounded-full bg-forest-400" style={{ animationDelay: `${i * 120}ms` }} />
@@ -242,7 +234,7 @@ export function AssistantView() {
                 onClick={explainAlerts}
                 className="shrink-0 rounded-full bg-forest-800 px-3 py-1.5 text-xs font-semibold text-white hover:bg-forest-700"
               >
-                {lang === "tet" ? "Saida mak la di'ak agora?" : "What's wrong right now?"}
+                {tr(lang === "tet" ? "Saida mak la di'ak agora?" : "What's wrong right now?")}
               </button>
               {MANUAL.slice(0, 6).map((e) => (
                 <button
@@ -251,7 +243,7 @@ export function AssistantView() {
                   onClick={() => ask(e.q.en, e.q.tet, e.q.en)}
                   className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-medium text-water-700 ring-1 ring-water-100 hover:bg-water-50"
                 >
-                  {lang === "tet" ? e.q.tet : e.q.en}
+                  {tr(lang === "tet" ? e.q.tet : e.q.en)}
                 </button>
               ))}
             </div>
@@ -264,21 +256,20 @@ export function AssistantView() {
             }}
           >
             <label htmlFor="tulun-input" className="sr-only">
-              Ask Tulun VIEM
-            </label>
+              {tr("Ask Tulun VIEM")}</label>
             <input
               id="tulun-input"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               maxLength={300}
               autoComplete="off"
-              placeholder={lang === "tet" ? "Hakerek pergunta… (Tetum ka English)" : "Type a question… (Tetum or English)"}
+              placeholder={tr("Type a question…")}
               className="h-11 min-w-0 flex-1 rounded-full border border-forest-200 bg-white px-4 text-sm focus:border-leaf-500 focus:outline-none"
             />
             <button
               type="submit"
               disabled={!input.trim() || typing}
-              aria-label="Send"
+              aria-label={tr("Send")}
               className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-forest-800 text-white hover:bg-forest-700 disabled:opacity-40"
             >
               <Send className="size-4" />
@@ -287,58 +278,53 @@ export function AssistantView() {
         </section>
 
         <div className="grid content-start gap-6">
-          <Card title="Guardrails" description="What Tulun VIEM may and may not do.">
+          <Disclosure title={tr("What the assistant can help with")}><Card title={tr("Guardrails")} description={tr("What Tulun VIEM may and may not do.")}>
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
               <ul className="space-y-2">
                 {MAY.map((t) => (
                   <li key={t} className="flex items-start gap-2 text-sm text-forest-800">
-                    <Check className="mt-0.5 size-4 shrink-0 text-leaf-600" aria-hidden="true" /> {t}
+                    <Check className="mt-0.5 size-4 shrink-0 text-leaf-600" aria-hidden="true" /> {tr(t)}
                   </li>
                 ))}
               </ul>
               <ul className="space-y-2">
                 {MAY_NOT.map((t) => (
                   <li key={t} className="flex items-start gap-2 text-sm text-forest-800">
-                    <X className="mt-0.5 size-4 shrink-0 text-crit-700" aria-hidden="true" /> {t}
+                    <X className="mt-0.5 size-4 shrink-0 text-crit-700" aria-hidden="true" /> {tr(t)}
                   </li>
                 ))}
               </ul>
             </div>
             <p className="mt-4 rounded-xl bg-forest-50 p-3 text-xs text-muted">
-              Try asking about chemicals to see the guardrail, or something outside the manual to see the hand-over.
-            </p>
-          </Card>
+              {tr("Try asking about chemicals to see the guardrail, or something outside the manual to see the hand-over.")}</p>
+          </Card></Disclosure>
 
-          <Card title="When the model or the link fails" description="The service degrades step by step — it never goes silent.">
+          <Disclosure title={tr("Other ways to get help")}><Card title={tr("When the model or the link fails")} description={tr("The service degrades step by step — it never goes silent.")}>
             <ol className="grid gap-3">
               <li className="flex gap-3">
                 <MessageSquareText className="mt-0.5 size-5 shrink-0 text-water-700" aria-hidden="true" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-forest-900">1 · Numbered SMS menu</p>
+                  <p className="text-sm font-semibold text-forest-900">{tr("1 · Numbered SMS menu")}</p>
                   <pre className="mt-2 overflow-x-auto rounded-xl bg-forest-950 p-3 font-mono text-[0.72rem] leading-relaxed whitespace-pre-wrap text-leaf-200">
-                    {`${unit.name.startsWith("VIEM") ? unit.name : `VIEM ${unit.name}`}\nHatán ho numeru:\n1 Status tanke\n2 Alerta loke\n3 Bolu Hub VIEM`}
+                    {tr("{0}\nReply with a number:\n1 Tank status\n2 Open alerts\n3 Call the VIEM Hub", [unit.name.startsWith("VIEM") ? unit.name : `VIEM ${unit.name}`])}
                   </pre>
                 </div>
               </li>
               <li className="flex gap-3">
                 <ScrollText className="mt-0.5 size-5 shrink-0 text-water-700" aria-hidden="true" />
                 <p className="text-sm text-forest-800">
-                  <strong className="text-forest-900">2 · Laminated guide on site</strong> — first-response steps printed at every tank.
-                </p>
+                  <strong className="text-forest-900">{tr("2 · Laminated guide on site")}</strong> {tr("— first-response steps printed at every tank.")}</p>
               </li>
               <li className="flex gap-3">
                 <Phone className="mt-0.5 size-5 shrink-0 text-water-700" aria-hidden="true" />
                 <p className="text-sm text-forest-800">
-                  <strong className="text-forest-900">3 · Phone call to the VIEM Hub</strong> — the operations manager is accountable for advice.
-                </p>
+                  <strong className="text-forest-900">{tr("3 · Phone call to the VIEM Hub")}</strong> {tr("— the operations manager is accountable for advice.")}</p>
               </li>
             </ol>
-          </Card>
+          </Card></Disclosure>
 
           <p className="text-xs leading-relaxed text-muted">
-            Every answer is logged and reviewed weekly; wrong answers become manual updates. Tetum wording in this demo is a
-            draft for review by native speakers.
-          </p>
+            {tr("Every answer is logged and reviewed weekly; wrong answers become manual updates. Tetum wording in this demo is a draft for review by native speakers.")}</p>
         </div>
       </div>
     </div>

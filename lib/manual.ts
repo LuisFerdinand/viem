@@ -125,7 +125,18 @@ export const MANUAL: ManualEntry[] = [
   },
 ];
 
-const BLOCKED = ["chemical", "pesticide", "medicine", "antibiotic", "drug", "kimiku", "pestisida", "ai-moruk", "aimoruk", "poison"];
+const BLOCKED = ["chemical", "pesticide", "medicine", "antibiotic", "drug", "kimiku", "pestisida", "ai-moruk", "aimoruk", "poison", "kimia", "pestisida", "obat", "antibiotik", "racun"];
+const INDONESIAN_KEYWORDS: Record<string, string[]> = {
+  "yellow-leaves": ["kuning", "daun", "pucat", "nutrisi"],
+  "fish-gasping": ["megap", "permukaan", "oksigen", "napas", "nafas"],
+  "green-water": ["hijau", "alga", "keruh", "lumut"],
+  "bad-smell": ["bau", "amonia", "busuk"],
+  feeding: ["pakan", "makan", "berapa kali"],
+  "harvest-lettuce": ["panen", "selada", "petik", "siap"],
+  "pump-stopped": ["pompa", "berhenti", "rusak", "listrik", "mati"],
+  "low-ph": ["asam", "ph", "keasaman"],
+  bsf: ["larva", "maggot", "sampah", "kompos"],
+};
 
 export type ManualAnswer =
   | { kind: "answer"; entry: ManualEntry; confidence: number }
@@ -138,7 +149,7 @@ export function answerFromManual(question: string): ManualAnswer {
   let best: ManualEntry | null = null;
   let bestScore = 0;
   for (const entry of MANUAL) {
-    const score = entry.keywords.reduce((s, k) => (new RegExp(`(^|[^a-zà-ú'])${k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i").test(text) ? s + 1 : s), 0);
+    const score = [...entry.keywords, ...(INDONESIAN_KEYWORDS[entry.id] ?? [])].reduce((s, k) => (new RegExp(`(^|[^a-zà-ú'])${k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i").test(text) ? s + 1 : s), 0);
     if (score > bestScore) {
       best = entry;
       bestScore = score;

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense, type ReactNode } from "react";
 import { DashboardProvider } from "@/components/dashboard/DashboardProvider";
 import { DashboardShell } from "@/components/dashboard/Shell";
-import { LogoMark } from "@/components/ui/Logo";
+import { Connecting } from "@/components/dashboard/Connecting";
 import { loadDashboardData } from "@/lib/data";
 
 export const metadata: Metadata = {
@@ -17,15 +17,6 @@ async function DashboardData({ children }: { children: ReactNode }) {
     <DashboardProvider initialData={data}>
       <DashboardShell>{children}</DashboardShell>
     </DashboardProvider>
-  );
-}
-
-function Connecting() {
-  return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-4 bg-[#f5f8f6]" role="status" aria-live="polite">
-      <LogoMark className="h-12 w-auto motion-safe:animate-pulse" />
-      <p className="text-sm font-medium text-muted">Connecting to the VIEM Hub…</p>
-    </div>
   );
 }
 
