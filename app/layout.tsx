@@ -54,7 +54,13 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} ${fraunces.variable} antialiased`} data-scroll-behavior="smooth">
+    // Browser extensions such as Scribe can add attributes before hydration.
+    <html
+      lang="en"
+      className={`${inter.variable} ${fraunces.variable} antialiased`}
+      data-scroll-behavior="smooth"
+      suppressHydrationWarning
+    >
       <body className="min-h-dvh">{children}</body>
     </html>
   );
