@@ -28,3 +28,18 @@ export const ledgerSchema = z.object({
   amountCents: z.number().int().positive().max(100_000_000), date: calendarDate,
   description: z.string().trim().min(1).max(240), counterparty: z.string().trim().max(120), reference: z.string().trim().max(80),
 });
+
+export const setInputSchema = z.object({
+  name: z.string().trim().min(1, "Give the set a name.").max(40, "Keep the set name under 40 characters."),
+  presetId: z.string().min(1, "Choose a growing profile.").max(60),
+  fishCount: z.number().int("Fish count must be a whole number.").min(0, "Fish count cannot be negative.").max(10_000, "That is more fish than one set can hold."),
+  tankLiters: z.number().int("Tank size must be a whole number.").min(100, "Tank size must be at least 100 litres.").max(50_000, "Tank size is limited to 50,000 litres in this demo."),
+});
+export const hubInputSchema = z.object({
+  name: z.string().trim().min(1, "Give the hub a name.").max(60, "Keep the hub name under 60 characters."),
+  site: z.string().trim().max(80).default(""),
+  location: z.string().trim().min(1, "Enter where the hub is.").max(80),
+  municipality: z.string().trim().min(1, "Choose a municipality.").max(40),
+});
+export type SetInput = z.infer<typeof setInputSchema>;
+export type HubInput = z.input<typeof hubInputSchema>;

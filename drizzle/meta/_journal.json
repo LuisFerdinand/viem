@@ -15,6 +15,20 @@
       "when": 1791655314842,
       "tag": "0001_peaceful_star_brand",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792076070542,
+      "tag": "0002_hubs_and_sets",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792076085401,
+      "tag": "0003_drop_unit_site_columns",
+      "breakpoints": true
     }
   ]
 }

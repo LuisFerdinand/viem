@@ -1,6 +1,6 @@
-import { translate, type Language } from "./i18n";
+import { LANGUAGES, translate, type Language } from "./i18n";
 
-const locale = (language: Language) => language === "id" ? "id-ID" : language === "tet" ? "pt-TL" : "en-GB";
+const locale = (language: Language) => LANGUAGES.find((l) => l.code === language)?.locale ?? "en-GB";
 export function dashboardFormatters(language: Language) {
   const date = (value: Date | number | string, time = false) => {
     const d = new Date(value);

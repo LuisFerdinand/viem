@@ -24,21 +24,33 @@ import type { Preset } from "../domain";
 const createdAt = () =>
   timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow();
 
-export const units = pgTable("units", {
+export const hubs = pgTable("hubs", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
   kind: text("kind", { enum: ["hub", "suku"] }).notNull(),
   site: text("site").notNull(),
   location: text("location").notNull(),
   municipality: text("municipality").notNull(),
-  crops: text("crops").notNull(),
-  fishCount: integer("fish_count").notNull(),
-  tankLiters: integer("tank_liters").notNull(),
-  operatorTeam: integer("operator_team").notNull(),
   installedAt: date("installed_at", { mode: "string" }).notNull(),
   sortOrder: integer("sort_order").notNull().default(0),
   createdAt: createdAt(),
 });
+
+/** A "set": one monitored growing system (tank, sensors, equipment) inside a hub. */
+export const units = pgTable("units", {
+  id: text("id").primaryKey(),
+  hubId: text("hub_id")
+    .notNull()
+    .references(() => hubs.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  presetId: text("preset_id").notNull().default("aquaponics-tilapia"),
+  crops: text("crops").notNull(),
+  fishCount: integer("fish_count").notNull(),
+  tankLiters: integer("tank_liters").notNull(),
+  operatorTeam: integer("operator_team").notNull(),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: createdAt(),
+}, (t) => [index("units_hub_idx").on(t.hubId)]);
 
 export const thresholds = pgTable(
   "thresholds",

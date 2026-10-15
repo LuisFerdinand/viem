@@ -7,7 +7,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CROP_BY_ID } from "@/lib/domain";
 import { csvCell, ledgerRows } from "@/lib/ledger";
-import { selectUnit } from "@/lib/sim/store";
+import { selectUnit, unitLabel } from "@/lib/sim/store";
 import { LEDGER_CATEGORIES, type LedgerDTO } from "@/lib/types";
 import { cn, todayInDili } from "@/lib/utils";
 import { useSnapshot, useStore } from "../DashboardProvider";
@@ -81,7 +81,7 @@ export function LedgerView() {
     const a = document.createElement("a"); a.href = url; a.download = `viem-buku-besar-${unit.id}.csv`; a.click(); URL.revokeObjectURL(url);
   }
   return <div className="grid gap-6">
-    <PageHeader title={tr("Buku Besar")} description={tr("{0} · Farm income, expenses and buy-back payments in one place.", [unit.name])} actions={<><button className="dash-secondary" onClick={exportCsv} disabled={!visible.length}><Download className="size-4" />{tr("Export CSV")}</button><button className="dash-primary" onClick={() => setForm("new")}><Plus className="size-4" />{tr("Add transaction")}</button></>} />
+    <PageHeader title={tr("Buku Besar")} description={tr("{0} · Farm income, expenses and buy-back payments in one place.", [unitLabel(snap, unit.id)])} actions={<><button className="dash-secondary" onClick={exportCsv} disabled={!visible.length}><Download className="size-4" />{tr("Export CSV")}</button><button className="dash-primary" onClick={() => setForm("new")}><Plus className="size-4" />{tr("Add transaction")}</button></>} />
     <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
       {[{ label: "Income · Pemasukan", value: income, icon: ArrowDownLeft, tone: "text-ok-700", note: "Paid buy-backs + other income" }, { label: "Expenses · Pengeluaran", value: expense, icon: ArrowUpRight, tone: "text-crit-700", note: "Recorded farm operating costs" }, { label: "Net cash movement", value: income - expense, icon: Wallet, tone: "text-forest-900", note: "Income less expenses for this period" }, { label: "Outstanding buy-back", value: outstanding, icon: BookOpen, tone: "text-water-700", note: `${unpaid.length} unpaid harvests · all dates` }].map(({ label, value, icon: Icon, tone, note }) => <div key={label} className="rounded-2xl border border-forest-100 bg-white p-4 sm:p-5"><div className="flex items-start justify-between gap-2 text-xs text-muted"><span>{tr(label)}</span><Icon className={cn("size-4 shrink-0", tone)} /></div><p className={cn("mt-3 break-words text-xl font-semibold tracking-tight tabular sm:text-2xl", tone)}>{tr(usd(value / 100, 2))}</p><p className="mt-2 text-xs leading-relaxed text-muted">{tr(note)}</p></div>)}
     </div>

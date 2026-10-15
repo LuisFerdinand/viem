@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { useNow, useSnapshot, useStore } from "../DashboardProvider";
 import { ACTUATOR_ICON, SPINS } from "../icons";
 import { Card, Field, Input, PageHeader, Pill, Segmented, Switch } from "../ui";
-import { sessionRuntime } from "../widgets";
+import { LinkCard, PowerCard, ScenarioPanel, sessionRuntime } from "../widgets";
 import { Disclosure } from "../Disclosure";
 
 const MODES: { value: ActuatorMode; label: string }[] = [
@@ -246,6 +246,13 @@ export function ControlsView() {
           ))}
         </ul>
       </Card></Disclosure>
+      <Disclosure title={tr("Power, connection and demo scenarios")}>
+        <div className="grid items-start gap-5 lg:grid-cols-3">
+          <PowerCard live={live} />
+          <LinkCard unitId={unit.id} live={live} />
+          <ScenarioPanel unitId={unit.id} live={live} />
+        </div>
+      </Disclosure>
     </div>
   );
 }

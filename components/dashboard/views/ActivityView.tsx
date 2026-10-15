@@ -19,7 +19,7 @@ import {
 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { EVENT_CATEGORIES, type EventCategory } from "@/lib/domain";
-import { selectUnit } from "@/lib/sim/store";
+import { selectUnit, unitLabel } from "@/lib/sim/store";
 import type { EventDTO } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useNow, useSnapshot, useStore } from "../DashboardProvider";
@@ -62,7 +62,7 @@ export function ActivityList({ events, showUnit = false }: { events: EventDTO[];
               <p className="text-sm text-forest-900">{tr(e.message)}</p>
               <p className="mt-0.5 text-xs text-muted">
                 {e.actor}
-                {tr(unit ? ` · ${unit.name}` : "")} ·{" "}
+                {tr(unit ? ` · ${unitLabel(snap, unit.id)}` : "")} ·{" "}
                 <time dateTime={e.createdAt} title={tr(fmtDateTime(e.createdAt))}>
                   {tr(now ? fmtRelative(e.createdAt, now) : fmtDateTime(e.createdAt))}
                 </time>
@@ -77,7 +77,7 @@ export function ActivityList({ events, showUnit = false }: { events: EventDTO[];
 }
 
 export function ActivityView() {
-  const { tr } = useLanguage();
+  const { tr, simple, setSimple } = useLanguage();
   const snap = useSnapshot();
   const store = useStore();
   const now = useNow();
@@ -135,7 +135,7 @@ export function ActivityView() {
                 <option value="all">{tr("All units")}</option>
                 {snap.data.units.map((u) => (
                   <option key={u.id} value={u.id}>
-                    {u.name}
+                    {unitLabel(snap, u.id)}
                   </option>
                 ))}
               </Select>
@@ -193,7 +193,14 @@ export function ActivityView() {
             </form>
           </Card>
 
-          <Card title={tr("Maintenance")} description={tr("{0} · guards against sensor drift", [unit.name])}>
+          <Card title={tr("Display")} description={tr("Choose how much help and detail the pages show.")}>
+            <label className="flex min-h-11 items-start gap-3 text-sm text-forest-800">
+              <input type="checkbox" checked={simple} onChange={(e) => setSimple(e.target.checked)} className="mt-0.5 size-5 accent-forest-700" />
+              <span>{tr("Show page help and keep advanced sections folded away")}</span>
+            </label>
+          </Card>
+
+          <Card title={tr("Maintenance")} description={tr("{0} · guards against sensor drift", [unitLabel(snap, unit.id)])}>
             <p className="rounded-xl bg-forest-50 p-3 text-sm text-forest-800">
               {tr("Last calibration:")}{" "}
               <strong>{tr(calibrationDays == null ? "not recorded" : calibrationDays === 0 ? "today" : `${calibrationDays} days ago`)}</strong>

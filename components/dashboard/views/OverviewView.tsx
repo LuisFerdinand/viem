@@ -1,18 +1,64 @@
 "use client";
 
-import { useLanguage, useDashboardFormatters } from "../LanguageProvider";
-
-import { ArrowRight, BellOff, Fish, MapPin, SatelliteDish, CloudOff, Bell, Sprout, Wallet } from "lucide-react";
+import { ArrowRight, BellRing, ChevronRight, MessageCircle, RefreshCw, X } from "lucide-react";
 import Link from "next/link";
-import { ACTUATOR_KINDS, SENSOR_CATEGORIES } from "@/lib/domain";
-import { selectThresholds, selectUnit, unacknowledged } from "@/lib/sim/store";
+import { SENSORS, SENSOR_KEYS, formatSensor, type SensorKey, type SensorStatus } from "@/lib/domain";
+import { findPreset } from "@/lib/hubs";
+import { selectHub, selectUnit, unacknowledged } from "@/lib/sim/store";
 import { cn } from "@/lib/utils";
-import { AlertItem } from "../AlertItem";
 import { useNow, useSnapshot, useStore } from "../DashboardProvider";
-import { Card, EmptyState, PageHeader, Pill } from "../ui";
-import { ActuatorRow, HealthRing, LinkCard, PowerCard, ScenarioPanel, SensorTile, fleetSummary } from "../widgets";
-import { ActivityList } from "./ActivityView";
-import { Disclosure } from "../Disclosure";
+import { useDashboardFormatters, useLanguage } from "../LanguageProvider";
+import { SENSOR_ICON } from "../icons";
+import { useBrowserPreference } from "../useBrowserPreference";
+import { BusinessSummary } from "../BusinessSummary";
+import { Card, PageHeader, StatusBadge } from "../ui";
+
+/** A coloured line under each result so a problem stands out at a glance. */
+const ROW_BORDER: Record<SensorStatus, string> = { ok: "border-b-ok-500/40", warning: "border-b-warn-500", critical: "border-b-crit-500" };
+
+function ResultRow({ sensor, value, status }: { sensor: SensorKey; value: number; status: SensorStatus }) {
+  const { tr } = useLanguage();
+  const meta = SENSORS[sensor];
+  const Icon = SENSOR_ICON[sensor];
+  return (
+    <li>
+      <Link
+        href={`/dashboard/sensors#${sensor}`}
+        aria-label={tr("{0}: {1} {2}, {3}", [tr(meta.label), formatSensor(sensor, value), meta.unit, status])}
+        className={cn("group flex min-h-16 items-center gap-3 border-b-2 px-4 py-3 transition-colors hover:bg-forest-50/60 sm:px-5", ROW_BORDER[status])}
+      >
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-lg" style={{ backgroundColor: `${meta.color}14`, color: meta.color }}>
+          <Icon className="size-[1.1rem]" aria-hidden="true" />
+        </span>
+        <span className="min-w-0 flex-1 text-sm font-medium text-forest-900">{tr(meta.label)}</span>
+        <span className="font-display text-2xl leading-none text-forest-950 tabular">
+          {tr(formatSensor(sensor, value))}
+          {meta.unit !== "pH" && <span className="ml-1 font-sans text-xs text-muted">{tr(meta.unit)}</span>}
+        </span>
+        <span className="flex w-24 justify-end"><StatusBadge status={status} /></span>
+        <ChevronRight className="hidden size-4 shrink-0 text-forest-300 group-hover:text-forest-500 sm:block" aria-hidden="true" />
+      </Link>
+    </li>
+  );
+}
+
+/** A one-time invitation for new users, and for phones, to use the simple chat instead. */
+function ChatPromo() {
+  const { tr } = useLanguage();
+  const [state, setState] = useBrowserPreference("viem.chat-promo", "show");
+  if (state === "hidden") return null;
+  return (
+    <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-leaf-200 bg-leaf-50 p-4">
+      <span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-white text-leaf-700"><MessageCircle className="size-5" aria-hidden="true" /></span>
+      <div className="min-w-0 flex-1 basis-56">
+        <p className="text-sm font-semibold text-forest-900">{tr("New here? Chat with Tulun VIEM")}</p>
+        <p className="mt-0.5 text-xs leading-relaxed text-muted">{tr("Check your farm, record money and turn equipment on or off with simple messages. Alerts arrive there too.")}</p>
+      </div>
+      <Link href="/dashboard/assistant" onClick={() => setState("hidden")} className="dash-primary">{tr("Open Tulun VIEM")}</Link>
+      <button type="button" onClick={() => setState("hidden")} aria-label={tr("Dismiss notification")} className="flex size-10 items-center justify-center rounded-xl text-forest-500 hover:bg-white"><X className="size-4" aria-hidden="true" /></button>
+    </div>
+  );
+}
 
 export function OverviewView() {
   const { fmtRelative } = useDashboardFormatters();
@@ -20,168 +66,58 @@ export function OverviewView() {
   const snap = useSnapshot();
   const store = useStore();
   const now = useNow();
+  const hub = selectHub(snap);
   const unit = selectUnit(snap);
   const live = snap.live[unit.id];
-  const thresholds = selectThresholds(snap);
-  const actuators = snap.data.actuators.filter((a) => a.unitId === unit.id);
-  const alerts = unacknowledged(snap, unit.id).slice(0, 3);
-  const events = snap.data.events.filter((e) => e.unitId === unit.id || e.unitId === null).slice(0, 6);
+  const open = unacknowledged(snap, unit.id).length;
   if (!live) return null;
 
+  const needCheck = SENSOR_KEYS.filter((k) => live.statuses[k] !== "ok").length;
+  const preset = findPreset(snap.data.presets, unit.presetId);
+
   return (
-    <div className="grid gap-6">
+    <div className="grid gap-5">
+      <ChatPromo />
       <PageHeader
-        title={tr(unit.name)}
+        title={`${hub.name} · ${unit.name}`}
         description={
           <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="inline-flex items-center gap-1">
-              <MapPin className="size-3.5" aria-hidden="true" /> {unit.site} · {unit.location}, {unit.municipality}
-            </span>
-            <span className="inline-flex items-center gap-1">
-              <Fish className="size-3.5" aria-hidden="true" /> {tr(unit.fishCount)} {tr("tilapia ·")}{" "}{tr(unit.tankLiters.toLocaleString())} {tr("L tank")}</span>
+            <span>{tr(preset.crop)}</span>
+            <span>{tr("Last scan")} {tr(now ? fmtRelative(live.latest.t, now) : "—")}</span>
           </span>
         }
         actions={
-          <div className="flex items-center gap-3 rounded-2xl bg-white px-4 py-2 ring-1 ring-forest-100">
-            <HealthRing value={live.health} size={48} />
-            <div className="text-xs">
-              <p className="font-semibold text-forest-900">{tr("Farm condition")}</p>
-              <p className="text-muted">{tr(live.history.length)} {tr("readings · last")}{" "}{tr(now ? fmtRelative(live.latest.t, now) : "—")}</p>
-            </div>
-          </div>
+          <button type="button" onClick={() => store.readNow()} className="dash-secondary">
+            <RefreshCw className="size-4" aria-hidden="true" /> {tr("Scan now")}
+          </button>
         }
       />
 
-      <div className="grid gap-3 md:grid-cols-3">
-        {[
-          { href: "/dashboard/alerts", icon: Bell, title: "Check alerts", body: "See what needs attention and confirm after checking." },
-          { href: "/dashboard/harvest", icon: Sprout, title: "Record a harvest", body: "Add today's crop, weight and buyer." },
-          { href: "/dashboard/ledger", icon: Wallet, title: "Record income or an expense", body: "Keep a note of money received and spent." },
-        ].map(({ href, icon: Icon, title, body }) => <Link key={href} href={href} className="group flex items-start gap-3 rounded-2xl border border-forest-100 bg-white p-4 transition-colors hover:border-forest-300"><span className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-leaf-50 text-leaf-700"><Icon className="size-5" /></span><div className="min-w-0 flex-1"><p className="text-sm font-semibold text-forest-900">{tr(title)}</p><p className="mt-1 text-xs leading-relaxed text-muted">{tr(body)}</p></div><ArrowRight className="mt-1 size-4 shrink-0 text-forest-400" /></Link>)}
-      </div>
+      {open > 0 && (
+        <Link href="/dashboard/alerts" className="flex items-center gap-3 rounded-2xl border border-crit-500/30 bg-crit-50 px-4 py-3 text-sm font-semibold text-crit-700 hover:border-crit-500/60">
+          <BellRing className="size-5 shrink-0" aria-hidden="true" />
+          <span className="flex-1">{tr(open === 1 ? "1 alert needs your attention" : "{0} alerts need your attention", [open])}</span>
+          <ArrowRight className="size-4" aria-hidden="true" />
+        </Link>
+      )}
 
-      {/* Fleet */}
-      <section aria-labelledby="fleet-heading">
-        <h2 id="fleet-heading" className="sr-only">
-          {tr("Fleet")}</h2>
-        <ul className="grid gap-3 md:grid-cols-3">
-          {fleetSummary(snap).map(({ unit: u, live: l, open }) => {
-            const selected = u.id === unit.id;
-            const offline = l?.scenarios.linkOutage;
-            return (
-              <li key={u.id}>
-                <button
-                  type="button"
-                  onClick={() => store.selectUnit(u.id)}
-                  aria-pressed={selected}
-                  className={cn(
-                    "flex w-full items-center gap-3 rounded-2xl border bg-white p-3 text-left transition-shadow hover:shadow-soft",
-                    selected ? "border-leaf-500 ring-2 ring-leaf-200" : "border-forest-100",
-                  )}
-                >
-                  {l && <HealthRing value={l.health} size={44} />}
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-forest-900">{u.name}</span>
-                    <span className="block truncate text-xs text-muted">
-                      {u.site} · {u.municipality}
-                    </span>
-                  </span>
-                  <span className="flex flex-col items-end gap-1">
-                    <Pill tone={offline ? "crit" : "leaf"}>
-                      {offline ? <CloudOff className="size-3" aria-hidden="true" /> : <SatelliteDish className="size-3" aria-hidden="true" />}
-                      {tr(offline ? "Offline" : "Online")}
-                    </Pill>
-                    {open > 0 ? <Pill tone="warn">{tr(open)} {tr("alert")}{tr(open > 1 ? "s" : "")}</Pill> : <Pill>{tr("No alerts")}</Pill>}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-
-      {/* Sensors */}
-      <section aria-labelledby="sensors-heading">
-        <div className="mb-3 flex items-center justify-between">
-          <h2 id="sensors-heading" className="text-sm font-semibold text-forest-900">
-            {tr("Live sensors")}</h2>
-          <Link href="/dashboard/sensors" className="inline-flex items-center gap-1 text-xs font-semibold text-forest-600 hover:underline">
-            {tr("Charts & history")}{" "}<ArrowRight className="size-3.5" aria-hidden="true" />
-          </Link>
-        </div>
-        <div className="grid items-start gap-5 xl:grid-cols-3">
-          {SENSOR_CATEGORIES.map((category) => (
-            <div key={category.id} className="grid gap-3">
-              <div className="border-l-2 border-forest-300 pl-3">
-                <h3 className="text-sm font-semibold text-forest-900">{tr(category.label)} <span className="ml-1 text-xs font-normal text-muted">{tr(category.sensors.length)} {tr("sensors")}</span></h3>
-                <p className="mt-1 text-xs leading-relaxed text-muted">{tr(category.description)}</p>
-              </div>
-              {category.sensors.map((k) => <SensorTile key={k} sensor={k} live={live} threshold={thresholds[k]} href={`/dashboard/sensors#${k}`} />)}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <div className="grid items-start gap-6 xl:grid-cols-3">
-        <div className="grid content-start gap-6 xl:col-span-2">
-          <Card
-            title={tr("Equipment")}
-            description={tr("Switch equipment by hand, or let automatic rules and timers run it.")}
-            action={
-              <Link href="/dashboard/controls" className="inline-flex items-center gap-1 text-xs font-semibold text-forest-600 hover:underline">
-                {tr("All controls")}{" "}<ArrowRight className="size-3.5" aria-hidden="true" />
-              </Link>
-            }
-            bodyClassName="py-1"
-          >
-            <ul className="divide-y divide-forest-100">
-              {ACTUATOR_KINDS.map((k) => {
-                const dto = actuators.find((a) => a.kind === k);
-                return dto ? (
-                  <ActuatorRow key={k} unitId={unit.id} kind={k} dto={dto} live={live} pending={!!snap.pending[`power:${unit.id}:${k}`]} />
-                ) : null;
-              })}
-            </ul>
-          </Card>
-
-          <Card
-            title={tr("Needs attention")}
-            description={tr("Alerts stay open until a person acknowledges them.")}
-            action={
-              <Link href="/dashboard/alerts" className="inline-flex items-center gap-1 text-xs font-semibold text-forest-600 hover:underline">
-                {tr("All alerts")}{" "}<ArrowRight className="size-3.5" aria-hidden="true" />
-              </Link>
-            }
-          >
-            {alerts.length ? (
-              <ul className="grid gap-3">
-                {alerts.map((a) => (
-                  <AlertItem key={a.id} alert={a} compact />
-                ))}
-              </ul>
-            ) : (
-              <EmptyState icon={BellOff} title={tr("All clear")}>
-                {tr("No alerts need acknowledgement for")}{" "}{unit.name}{tr(". Try a demo scenario to see the alarm flow.")}</EmptyState>
-            )}
-          </Card>
-        </div>
-
-        <div className="grid content-start gap-6">
-          <Disclosure title={tr("Power and connection details")}><PowerCard live={live} /><LinkCard unitId={unit.id} live={live} /></Disclosure>
-          <Disclosure title={tr("Try a demonstration")}><ScenarioPanel unitId={unit.id} live={live} /></Disclosure>
-        </div>
-      </div>
-
-      <Disclosure title={tr("Recent activity")}><Card
-        title={tr("Recent activity")}
-        action={
-          <Link href="/dashboard/activity" className="inline-flex items-center gap-1 text-xs font-semibold text-forest-600 hover:underline">
-            {tr("Full log")}{" "}<ArrowRight className="size-3.5" aria-hidden="true" />
-          </Link>
-        }
+      <Card
+        title={tr("Latest scan")}
+        description={needCheck === 0 ? tr("Everything is normal.") : tr(needCheck === 1 ? "1 reading needs checking." : "{0} readings need checking.", [needCheck])}
+        bodyClassName="p-0"
       >
-        <ActivityList events={events} />
-      </Card></Disclosure>
+        <ul>
+          {SENSOR_KEYS.map((k) => <ResultRow key={k} sensor={k} value={live.latest[k]} status={live.statuses[k]} />)}
+        </ul>
+      </Card>
+
+      <p className="text-center text-xs text-muted">
+        <Link href="/dashboard/sensors" className="inline-flex items-center gap-1 font-semibold text-forest-600 hover:underline">
+          {tr("Charts & history")} <ArrowRight className="size-3.5" aria-hidden="true" />
+        </Link>
+      </p>
+
+      <BusinessSummary />
     </div>
   );
 }

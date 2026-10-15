@@ -12,18 +12,32 @@ import type {
 
 /** Plain, serialisable shapes passed from the server to the dashboard. */
 
-export interface UnitDTO {
+/** A hub is a site (e.g. the VIEM Hub or a Suku Unit) that holds one or more sets. */
+export interface HubDTO {
   id: string;
   name: string;
   kind: "hub" | "suku";
   site: string;
   location: string;
   municipality: string;
+  installedAt: string;
+}
+
+/**
+ * A set is one monitored growing system inside a hub: its own tank, sensor kit,
+ * alarm limits, equipment and growing profile (the "unit" the rest of the app
+ * reads sensors and controls for).
+ */
+export interface UnitDTO {
+  id: string;
+  hubId: string;
+  name: string;
+  /** Growing profile (preset) this set follows. */
+  presetId: string;
   crops: string;
   fishCount: number;
   tankLiters: number;
   operatorTeam: number;
-  installedAt: string;
 }
 
 export interface ThresholdDTO {
@@ -119,6 +133,7 @@ export interface LedgerDTO {
 export interface DashboardData {
   source: "database" | "fallback";
   sourceNote?: string;
+  hubs: HubDTO[];
   units: UnitDTO[];
   thresholds: ThresholdDTO[];
   actuators: ActuatorDTO[];

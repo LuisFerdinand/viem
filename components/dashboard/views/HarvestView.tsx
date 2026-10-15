@@ -7,7 +7,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { BUYERS, CROP_BY_ID, CROPS, HARVEST_STATUSES, type CropCategory, type HarvestStatus } from "@/lib/domain";
-import { selectUnit } from "@/lib/sim/store";
+import { selectHub, selectUnit, unitLabel } from "@/lib/sim/store";
 import type { HarvestDTO } from "@/lib/types";
 import { cn, todayInDili } from "@/lib/utils";
 import { useSnapshot, useStore } from "../DashboardProvider";
@@ -123,6 +123,7 @@ export function HarvestView() {
   const snap = useSnapshot();
   const store = useStore();
   const unit = selectUnit(snap);
+  const hub = selectHub(snap);
   const [scope, setScope] = useState<"unit" | "all">("unit");
   const [confirmId, setConfirmId] = useState<number | null>(null);
 
@@ -136,7 +137,7 @@ export function HarvestView() {
   const last30 = rows.filter((h) => todayMs - new Date(`${h.harvestedAt}T00:00:00Z`).getTime() < 30 * DAY);
   const sales30 = last30.reduce((s, h) => s + h.weightKg * h.pricePerKg, 0);
   const kg30 = last30.reduce((s, h) => s + h.weightKg, 0);
-  const unitsInScope = scope === "all" ? snap.data.units.filter((u) => u.kind === "suku").length || 1 : 1;
+  const unitsInScope = scope === "all" ? snap.data.units.filter((u) => snap.data.hubs.find((h) => h.id === u.hubId)?.kind === "suku").length || 1 : 1;
   const targetLo = MONTHLY_TARGET[0] * unitsInScope;
   const targetHi = MONTHLY_TARGET[1] * unitsInScope;
   const net = sales30 - MONTHLY_COSTS * unitsInScope;
@@ -166,14 +167,14 @@ export function HarvestView() {
     const i = HARVEST_STATUSES.indexOf(s);
     return i < HARVEST_STATUSES.length - 1 ? HARVEST_STATUSES[i + 1] : null;
   };
-  const unitName = (h: HarvestDTO) => snap.data.units.find((u) => u.id === h.unitId)?.name ?? h.unitId;
+  const unitName = (h: HarvestDTO) => unitLabel(snap, h.unitId);
 
   return (
     <div className="grid gap-6">
       <PageHeader
         title={tr("Harvest & sales")}
         description={tr("Record what you harvested and track collection and buy-back payments.")}
-        actions={<Segmented label={tr("Scope")} value={scope} onChange={setScope} options={[{ value: "unit", label: unit.name }, { value: "all", label: "Whole network" }]} />}
+        actions={<Segmented label={tr("Scope")} value={scope} onChange={setScope} options={[{ value: "unit", label: unitLabel(snap, unit.id) }, { value: "all", label: "Whole network" }]} />}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-water-100 bg-water-50 px-4 py-3">
@@ -189,7 +190,7 @@ export function HarvestView() {
             <div className="h-full rounded-full bg-leaf-500" style={{ width: `${Math.min(100, (sales30 / targetHi) * 100)}%` }} />
           </div>
           <p className="mt-1.5 text-xs text-muted">
-            {tr(scope === "unit" && unit.kind === "hub"
+            {tr(scope === "unit" && hub.kind === "hub"
               ? "Hub production · Suku Unit target is US$350–500 / month"
               : `Target ${usd(targetLo)}–${usd(targetHi)} / month${scope === "all" ? " across Suku Units" : ""}`)}
           </p>
@@ -247,7 +248,7 @@ export function HarvestView() {
           </figure>
         </Card>
 
-        <Card title={tr("Log a harvest")} description={tr("{0} · recorded at the buy-back floor price", [unit.name])}>
+        <Card title={tr("Log a harvest")} description={tr("{0} · recorded at the buy-back floor price", [unitLabel(snap, unit.id)])}>
           <HarvestForm unitId={unit.id} />
         </Card>
       </div>

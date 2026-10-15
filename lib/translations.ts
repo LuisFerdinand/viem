@@ -1,4 +1,4 @@
-/** Application copy in Tetum and Bahasa Indonesia. Keep all three placeholder sets identical. */
+/** Application copy in Tetum and Bahasa Indonesia (Portuguese lives in translations-pt.ts). Keep every placeholder set identical. */
 export const messages: Record<string, readonly [string, string]> = {
   "My farm": [
     "Hau-nia to'os",
@@ -2224,9 +2224,9 @@ export const messages: Record<string, readonly [string, string]> = {
     "Foun liu iha leten. Alerta normaliza ona presiza ema konfirma nafatin.",
     "Terbaru di atas. Peringatan yang sudah normal tetap perlu dikonfirmasi."
   ],
-  "Turn on a demo scenario on the Overview page — for example a pump failure — to watch an alert arrive.": [
-    "Ativa senáriu demo iha Vizaun jerál — hanesan pompa falla — atu haree alerta.",
-    "Aktifkan skenario demo di Ringkasan — misalnya pompa gagal — untuk melihat peringatan muncul."
+  "Turn on a demo scenario on the Equipment page — for example a pump failure — to watch an alert arrive.": [
+    "Ativa senáriu demo iha pájina Ekipamentu — hanesan pompa falla — atu haree alerta.",
+    "Aktifkan skenario demo di halaman Peralatan — misalnya pompa gagal — untuk melihat peringatan muncul."
   ],
   "Pilot success measure: alerts answered in under 2 hours. Unanswered alerts escalate to a named VIEM agronomist.": [
     "Medida susesu pilotu: alerta responde iha oras 2 nia laran. Alerta la responde haruka ba agrónomu VIEM.",
@@ -5380,9 +5380,9 @@ export const messages: Record<string, readonly [string, string]> = {
     "foun liu iha leten. Alerta normaliza ona presiza ema konfirma nafatin.",
     "terbaru di atas. Peringatan yang sudah normal tetap perlu dikonfirmasi."
   ],
-  "turn on a demo scenario on the overview page — for example a pump failure — to watch an alert arrive.": [
-    "ativa senáriu demo iha Vizaun jerál — hanesan pompa falla — atu haree alerta.",
-    "aktifkan skenario demo di Ringkasan — misalnya pompa gagal — untuk melihat peringatan muncul."
+  "turn on a demo scenario on the equipment page — for example a pump failure — to watch an alert arrive.": [
+    "ativa senáriu demo iha pájina ekipamentu — hanesan pompa falla — atu haree alerta.",
+    "aktifkan skenario demo di halaman peralatan — misalnya pompa gagal — untuk melihat peringatan muncul."
   ],
   "pilot success measure: alerts answered in under 2 hours. unanswered alerts escalate to a named viem agronomist.": [
     "medida susesu pilotu: alerta responde iha oras 2 nia laran. Alerta la responde haruka ba agrónomu VIEM.",
@@ -6507,5 +6507,685 @@ export const messages: Record<string, readonly [string, string]> = {
   "auto · dissolved o₂ {0} mg/l above {1}": [
     "automátiku · O₂ dissolve {0} mg/L aas liu {1}",
     "otomatis · O₂ terlarut {0} mg/L di atas {1}"
+  ],
+  "Hubs & sets": [
+    "Hub no set sira",
+    "Hub & set"
+  ],
+  "Add hubs and manage their sets": [
+    "Aumenta hub no jere set sira",
+    "Tambah hub dan kelola set-nya"
+  ],
+  "Selected hub": [
+    "Hub ne'ebé hili",
+    "Hub yang dipilih"
+  ],
+  "Sets in {0}": [
+    "Set sira iha {0}",
+    "Set di {0}"
+  ],
+  "Last scan": [
+    "Sukat ikus",
+    "Pemindaian terakhir"
+  ],
+  "Scan now": [
+    "Sukat agora",
+    "Pindai sekarang"
+  ],
+  "1 alert needs your attention": [
+    "Alerta 1 presiza ita-nia atensaun",
+    "1 peringatan perlu perhatian Anda"
+  ],
+  "{0} alerts need your attention": [
+    "Alerta {0} presiza ita-nia atensaun",
+    "{0} peringatan perlu perhatian Anda"
+  ],
+  "Latest scan": [
+    "Sukat ikus",
+    "Pemindaian terbaru"
+  ],
+  "Everything is normal.": [
+    "Buat hotu normál.",
+    "Semuanya normal."
+  ],
+  "1 reading needs checking.": [
+    "Leitura 1 presiza verifika.",
+    "1 pembacaan perlu diperiksa."
+  ],
+  "{0} readings need checking.": [
+    "Leitura {0} presiza verifika.",
+    "{0} pembacaan perlu diperiksa."
+  ],
+  "Power, connection and demo scenarios": [
+    "Eletrisidade, ligasaun no senáriu demo",
+    "Daya, koneksi, dan skenario demo"
+  ],
+  "Choose your hub in the top bar and a set below it.": [
+    "Hili ita-nia hub iha bar leten no set iha okos.",
+    "Pilih hub Anda di bilah atas dan set di bawahnya."
+  ],
+  "Open a result to see its chart and advice.": [
+    "Loke rezultadu ida atu haree nia gráfiku no konsellu.",
+    "Buka satu hasil untuk melihat grafik dan sarannya."
+  ],
+  "Add hubs and organise their sets": [
+    "Aumenta hub no organiza sira-nia set",
+    "Tambah hub dan atur set-nya"
+  ],
+  "A hub is a site such as the VIEM Hub. Its sets are separate tanks or grow beds, each following its own growing profile.": [
+    "Hub mak fatin ida hanesan VIEM Hub. Nia set sira mak tanke ka kama kultivu ne'ebé separadu, ida-idak tuir nia perfil kultivu rasik.",
+    "Hub adalah sebuah lokasi seperti VIEM Hub. Set-nya adalah tangki atau bedeng tanam terpisah, masing-masing mengikuti profil budidayanya sendiri."
+  ],
+  "Choose Add hub, then enter where it is and describe its first set.": [
+    "Hili Aumenta hub, depois hatama nia fatin no deskreve nia set dahuluk.",
+    "Pilih Tambah hub, lalu isi lokasinya dan jelaskan set pertamanya."
+  ],
+  "Add more sets to a hub when you set up another tank or grow bed.": [
+    "Aumenta set tan ba hub bainhira ita instala tanke ka kama kultivu seluk.",
+    "Tambah set lagi ke hub saat Anda memasang tangki atau bedeng tanam lain."
+  ],
+  "Open a set to see its latest scan, alerts and equipment.": [
+    "Loke set ida atu haree nia sukat ikus, alerta no ekipamentu.",
+    "Buka satu set untuk melihat pemindaian terbaru, peringatan, dan peralatannya."
+  ],
+  "Set name": [
+    "Naran set",
+    "Nama set"
+  ],
+  "Growing profile": [
+    "Perfil kultivu",
+    "Profil budidaya"
+  ],
+  "Sets the alarm limits and equipment rules for the plants and fish.": [
+    "Determina limite alarme no regra ekipamentu ba modo no ikan.",
+    "Menentukan batas alarm dan aturan peralatan untuk tanaman dan ikan."
+  ],
+  "Fish in the tank": [
+    "Ikan iha tanke",
+    "Ikan di tangki"
+  ],
+  "Tank size (litres)": [
+    "Tamañu tanke (litru)",
+    "Ukuran tangki (liter)"
+  ],
+  "Open alerts: {0}": [
+    "Alerta loke: {0}",
+    "Peringatan terbuka: {0}"
+  ],
+  "{0} fish · {1} L tank": [
+    "Ikan {0} · tanke {1} L",
+    "{0} ikan · tangki {1} L"
+  ],
+  "No fish · {1} L tank": [
+    "La iha ikan · tanke {1} L",
+    "Tanpa ikan · tangki {1} L"
+  ],
+  "Open": [
+    "Loke",
+    "Buka"
+  ],
+  "Remove set {0}": [
+    "Hasai set {0}",
+    "Hapus set {0}"
+  ],
+  "Remove hub {0}": [
+    "Hasai hub {0}",
+    "Hapus hub {0}"
+  ],
+  "Remove": [
+    "Hasai",
+    "Hapus"
+  ],
+  "Remove set {0}? This also removes its alerts, harvests and money records.": [
+    "Hasai set {0}? Nia alerta, kolleita no rekordu osan mós sei hasai.",
+    "Hapus set {0}? Peringatan, panen, dan catatan uangnya juga akan dihapus."
+  ],
+  "Keep it": [
+    "Husik de'it",
+    "Pertahankan"
+  ],
+  "Yes, remove": [
+    "Sim, hasai",
+    "Ya, hapus"
+  ],
+  "A hub is a site such as the VIEM Hub. Each hub has sets: separate tanks or grow beds, each following its own growing profile.": [
+    "Hub mak fatin ida hanesan VIEM Hub. Hub ida-idak iha set sira: tanke ka kama kultivu separadu, ida-idak tuir nia perfil kultivu rasik.",
+    "Hub adalah sebuah lokasi seperti VIEM Hub. Setiap hub memiliki set: tangki atau bedeng tanam terpisah, masing-masing mengikuti profil budidayanya sendiri."
+  ],
+  "Add hub": [
+    "Aumenta hub",
+    "Tambah hub"
+  ],
+  "Add a hub": [
+    "Aumenta hub ida",
+    "Tambah sebuah hub"
+  ],
+  "Every hub starts with one set. You can add more sets afterwards.": [
+    "Hub ida-idak hahú ho set ida. Ita bele aumenta set tan depois.",
+    "Setiap hub dimulai dengan satu set. Anda bisa menambah set lagi nanti."
+  ],
+  "Hub name": [
+    "Naran hub",
+    "Nama hub"
+  ],
+  "For example: Suku Unit 03": [
+    "Ezemplu: Suku Unit 03",
+    "Contoh: Suku Unit 03"
+  ],
+  "Municipality": [
+    "Munisípiu",
+    "Kabupaten"
+  ],
+  "Location": [
+    "Fatin",
+    "Lokasi"
+  ],
+  "Village, suco or landmark": [
+    "Aldeia, suku ka fatin ne'ebé koñesidu",
+    "Dusun, suku, atau penanda lokasi"
+  ],
+  "Type of site (optional)": [
+    "Tipu fatin (opsionál)",
+    "Jenis lokasi (opsional)"
+  ],
+  "School site, cooperative, farm…": [
+    "Eskola, kooperativa, to'os…",
+    "Sekolah, koperasi, kebun…"
+  ],
+  "First set": [
+    "Set dahuluk",
+    "Set pertama"
+  ],
+  "No hubs yet": [
+    "Seidauk iha hub",
+    "Belum ada hub"
+  ],
+  "Add your first hub to start monitoring.": [
+    "Aumenta ita-nia hub dahuluk atu hahú monitoriza.",
+    "Tambahkan hub pertama Anda untuk mulai memantau."
+  ],
+  "Selected": [
+    "Hili ona",
+    "Dipilih"
+  ],
+  "Remove hub": [
+    "Hasai hub",
+    "Hapus hub"
+  ],
+  "Remove hub {0} and all of its sets? This also removes their alerts, harvests and money records.": [
+    "Hasai hub {0} no nia set hotu? Sira-nia alerta, kolleita no rekordu osan mós sei hasai.",
+    "Hapus hub {0} beserta semua set-nya? Peringatan, panen, dan catatan uang mereka juga akan dihapus."
+  ],
+  "Add a set to {0}": [
+    "Aumenta set ida ba {0}",
+    "Tambah set ke {0}"
+  ],
+  "Add set": [
+    "Aumenta set",
+    "Tambah set"
+  ],
+  "This hub has the most sets the demo allows.": [
+    "Hub ne'e iha set barak liu ne'ebé demo permite.",
+    "Hub ini sudah memiliki set terbanyak yang diizinkan demo."
+  ],
+  "Add a set": [
+    "Aumenta set ida",
+    "Tambah satu set"
+  ],
+  "Hub added": [
+    "Hub aumenta ona",
+    "Hub ditambahkan"
+  ],
+  "Set added": [
+    "Set aumenta ona",
+    "Set ditambahkan"
+  ],
+  "Set removed": [
+    "Set hasai ona",
+    "Set dihapus"
+  ],
+  "Hub removed": [
+    "Hub hasai ona",
+    "Hub dihapus"
+  ],
+  "Give the set a name.": [
+    "Fó naran ba set.",
+    "Beri nama pada set."
+  ],
+  "Keep the set name under 40 characters.": [
+    "Naran set labele liu karakter 40.",
+    "Nama set maksimal 40 karakter."
+  ],
+  "Choose a growing profile.": [
+    "Hili perfil kultivu ida.",
+    "Pilih profil budidaya."
+  ],
+  "Fish count must be a whole number.": [
+    "Númeru ikan tenke númeru intero.",
+    "Jumlah ikan harus bilangan bulat."
+  ],
+  "Fish count cannot be negative.": [
+    "Númeru ikan labele negativu.",
+    "Jumlah ikan tidak boleh negatif."
+  ],
+  "That is more fish than one set can hold.": [
+    "Ne'e ikan barak liu duké ne'ebé set ida bele hola.",
+    "Itu lebih banyak ikan daripada yang dapat ditampung satu set."
+  ],
+  "Tank size must be a whole number.": [
+    "Tamañu tanke tenke númeru intero.",
+    "Ukuran tangki harus bilangan bulat."
+  ],
+  "Tank size must be at least 100 litres.": [
+    "Tamañu tanke tenke litru 100 ka liu.",
+    "Ukuran tangki minimal 100 liter."
+  ],
+  "Tank size is limited to 50,000 litres in this demo.": [
+    "Tamañu tanke limite to'o litru 50,000 iha demo ne'e.",
+    "Ukuran tangki dibatasi 50.000 liter dalam demo ini."
+  ],
+  "Give the hub a name.": [
+    "Fó naran ba hub.",
+    "Beri nama pada hub."
+  ],
+  "Keep the hub name under 60 characters.": [
+    "Naran hub labele liu karakter 60.",
+    "Nama hub maksimal 60 karakter."
+  ],
+  "Enter where the hub is.": [
+    "Hatama hub nia fatin.",
+    "Isi lokasi hub."
+  ],
+  "Choose a municipality.": [
+    "Hili munisípiu ida.",
+    "Pilih kabupaten."
+  ],
+  "Check the hub details.": [
+    "Verifika detallu hub nian.",
+    "Periksa rincian hub."
+  ],
+  "Check the set details.": [
+    "Verifika detallu set nian.",
+    "Periksa rincian set."
+  ],
+  "This demo is limited to {0} hubs. Remove one before adding another.": [
+    "Demo ne'e limite to'o hub {0}. Hasai ida molok aumenta seluk.",
+    "Demo ini dibatasi {0} hub. Hapus satu sebelum menambah yang lain."
+  ],
+  "A hub can have at most {0} sets in this demo.": [
+    "Hub ida bele iha set {0} de'it iha demo ne'e.",
+    "Satu hub dapat memiliki paling banyak {0} set dalam demo ini."
+  ],
+  "A hub needs at least one set. Remove the whole hub instead.": [
+    "Hub ida presiza set ida ka liu. Hasai hub tomak de'it.",
+    "Hub membutuhkan minimal satu set. Hapus seluruh hub saja."
+  ],
+  "Keep at least one hub in the dashboard.": [
+    "Husik hub ida ka liu iha dashboard.",
+    "Sisakan minimal satu hub di dasbor."
+  ],
+  "Hub not found": [
+    "Hub la hetan",
+    "Hub tidak ditemukan"
+  ],
+  "Set not found": [
+    "Set la hetan",
+    "Set tidak ditemukan"
+  ],
+  "Unknown growing profile": [
+    "Perfil kultivu la koñesidu",
+    "Profil budidaya tidak dikenal"
+  ],
+  "Hub added: {0} ({1}) with {2}": [
+    "Hub aumenta ona: {0} ({1}) ho {2}",
+    "Hub ditambahkan: {0} ({1}) dengan {2}"
+  ],
+  "Set added to {0}: {1} ({2})": [
+    "Set aumenta ba {0}: {1} ({2})",
+    "Set ditambahkan ke {0}: {1} ({2})"
+  ],
+  "Set removed from {0}: {1}": [
+    "Set hasai husi {0}: {1}",
+    "Set dihapus dari {0}: {1}"
+  ],
+  "Hub removed: {0}": [
+    "Hub hasai ona: {0}",
+    "Hub dihapus: {0}"
+  ],
+  "Set removed: {0}": [
+    "Set hasai ona: {0}",
+    "Set dihapus: {0}"
+  ],
+  "Farm business": [
+    "Negósiu to'os nian",
+    "Usaha kebun"
+  ],
+  "Last 30 days, all sets in {0}.": [
+    "Loron 30 ikus, set hotu iha {0}.",
+    "30 hari terakhir, semua set di {0}."
+  ],
+  "Profit": [
+    "Lukru",
+    "Laba"
+  ],
+  "Income minus expenses": [
+    "Reseita menus despeza",
+    "Pemasukan dikurangi pengeluaran"
+  ],
+  "Harvest payments and other income": [
+    "Pagamentu kolleita no reseita seluk",
+    "Pembayaran panen dan pemasukan lain"
+  ],
+  "Feed, nutrients, power and more": [
+    "Hahán, nutriente, eletrisidade no seluk tan",
+    "Pakan, nutrisi, listrik, dan lainnya"
+  ],
+  "Still to receive": [
+    "Seidauk simu",
+    "Belum diterima"
+  ],
+  "Harvests not paid yet": [
+    "Kolleita seidauk selu",
+    "Panen yang belum dibayar"
+  ],
+  "{0}% vs the 30 days before": [
+    "{0}% kompara ho loron 30 molok",
+    "{0}% dibanding 30 hari sebelumnya"
+  ],
+  "Income, expenses and profit": [
+    "Reseita, despeza no lukru",
+    "Pemasukan, pengeluaran, dan laba"
+  ],
+  "Week by week, last 8 weeks.": [
+    "Semana ba semana, semana 8 ikus.",
+    "Minggu demi minggu, 8 minggu terakhir."
+  ],
+  "Where the money goes": [
+    "Osan ba ne'ebé",
+    "Ke mana uang pergi"
+  ],
+  "Expenses by type, last 30 days.": [
+    "Despeza tuir tipu, loron 30 ikus.",
+    "Pengeluaran menurut jenis, 30 hari terakhir."
+  ],
+  "No expenses recorded yet.": [
+    "Seidauk iha despeza ne'ebé rejista.",
+    "Belum ada pengeluaran yang dicatat."
+  ],
+  "Money by set": [
+    "Osan tuir set",
+    "Uang menurut set"
+  ],
+  "Income and expenses of each set, last 30 days.": [
+    "Reseita no despeza husi set ida-idak, loron 30 ikus.",
+    "Pemasukan dan pengeluaran setiap set, 30 hari terakhir."
+  ],
+  "Harvest by crop": [
+    "Kolleita tuir ai-horis",
+    "Panen menurut tanaman"
+  ],
+  "Weight harvested, last 30 days.": [
+    "Todan ne'ebé kolleita, loron 30 ikus.",
+    "Berat yang dipanen, 30 hari terakhir."
+  ],
+  "No harvests recorded in the last 30 days.": [
+    "La iha kolleita ne'ebé rejista iha loron 30 ikus.",
+    "Tidak ada panen yang dicatat dalam 30 hari terakhir."
+  ],
+  "Weekly income, expenses and profit for {0}.": [
+    "Reseita, despeza no lukru semanál ba {0}.",
+    "Pemasukan, pengeluaran, dan laba mingguan untuk {0}."
+  ],
+  "Income and expenses for each set in {0}.": [
+    "Reseita no despeza ba set ida-idak iha {0}.",
+    "Pemasukan dan pengeluaran untuk setiap set di {0}."
+  ],
+  "I could not find set {0} in {1}.": [
+    "Hau la hetan set {0} iha {1}.",
+    "Saya tidak menemukan set {0} di {1}."
+  ],
+  "I do not have readings for {0} yet. Please try again in a moment.": [
+    "Hau seidauk iha leitura ba {0}. Favór koko fali iha momentu ida.",
+    "Saya belum punya pembacaan untuk {0}. Coba lagi sebentar lagi."
+  ],
+  "Do you want to turn {0} on or off?": [
+    "Ita hakarak loke ka taka {0}?",
+    "Apakah Anda ingin menyalakan atau mematikan {0}?"
+  ],
+  "{0} is not installed in {1}.": [
+    "{0} la instala iha {1}.",
+    "{0} tidak terpasang di {1}."
+  ],
+  "{0} is already {1} in {2}.": [
+    "{0} ona {1} iha {2}.",
+    "{0} sudah {1} di {2}."
+  ],
+  "Turn {0} {1} in {2}? It runs automatically now, so I will switch it to By hand first.": [
+    "Muda {0} ba {1} iha {2}? Agora nia la'o automátiku, entaun hau sei muda ba Ho liman uluk.",
+    "Ubah {0} menjadi {1} di {2}? Saat ini berjalan otomatis, jadi saya akan mengubahnya ke Manual dulu."
+  ],
+  "Turn {0} {1} in {2}?": [
+    "Muda {0} ba {1} iha {2}?",
+    "Ubah {0} menjadi {1} di {2}?"
+  ],
+  "Here is the equipment in {0}.": [
+    "Ne'e mak ekipamentu iha {0}.",
+    "Berikut peralatan di {0}."
+  ],
+  "Here is the latest scan for {0}.": [
+    "Ne'e mak sukat ikus ba {0}.",
+    "Berikut pemindaian terbaru untuk {0}."
+  ],
+  "That sounds like money. The Money chat can record it.": [
+    "Ne'e hanesan kona-ba osan. Xat Osan bele rejista.",
+    "Ini terdengar seperti soal uang. Obrolan Uang bisa mencatatnya."
+  ],
+  "That is a question for the manual. The Ask chat can answer it.": [
+    "Ne'e pergunta ba manuál. Xat Husu bele responde.",
+    "Ini pertanyaan untuk manual. Obrolan Tanya bisa menjawabnya."
+  ],
+  "I can check your farm, show alerts and turn equipment on or off. Tap a suggestion below, or type what you need.": [
+    "Hau bele verifika ita-nia to'os, hatudu alerta no loke ka taka ekipamentu. Hili sujestaun iha okos, ka hakerek saida mak ita presiza.",
+    "Saya bisa memeriksa kebun Anda, menampilkan peringatan, dan menyalakan atau mematikan peralatan. Ketuk saran di bawah, atau ketik yang Anda perlukan."
+  ],
+  "Save this to your money book (Buku Besar)?": [
+    "Rai ne'e ba ita-nia livru osan (Buku Besar)?",
+    "Simpan ini ke buku uang Anda (Buku Besar)?"
+  ],
+  "I need an amount, for example 15 or $15.50.": [
+    "Hau presiza montante ida, ezemplu 15 ka $15.50.",
+    "Saya perlu jumlahnya, misalnya 15 atau $15,50."
+  ],
+  "How much did you receive (US$)?": [
+    "Ita simu hira (US$)?",
+    "Berapa yang Anda terima (US$)?"
+  ],
+  "How much did you spend (US$)?": [
+    "Ita gasta hira (US$)?",
+    "Berapa yang Anda keluarkan (US$)?"
+  ],
+  "Here is the money summary for {0}, last 30 days.": [
+    "Ne'e mak rezumu osan ba {0}, loron 30 ikus.",
+    "Berikut ringkasan uang untuk {0}, 30 hari terakhir."
+  ],
+  "That is about the farm. The Farm chat can help with it.": [
+    "Ne'e kona-ba to'os. Xat To'os bele ajuda.",
+    "Ini soal kebun. Obrolan Kebun bisa membantu."
+  ],
+  "Tell me what you earned or spent, for example “Sold 5 kg lettuce for $15” or “Bought fish feed $12”. Or ask for your profit or expenses.": [
+    "Hatete mai hau saida mak ita hetan ka gasta, ezemplu “Faan alfase kg 5 ho $15” ka “Sosa hahán ikan $12”. Ka husu ita-nia lukru ka despeza.",
+    "Beri tahu saya apa yang Anda terima atau keluarkan, misalnya “Jual selada 5 kg seharga $15” atau “Beli pakan ikan $12”. Atau tanyakan laba atau pengeluaran Anda."
+  ],
+  "Farm": [
+    "To'os",
+    "Kebun"
+  ],
+  "Alerts, readings and equipment": [
+    "Alerta, leitura no ekipamentu",
+    "Peringatan, pembacaan, dan peralatan"
+  ],
+  "Money": [
+    "Osan",
+    "Uang"
+  ],
+  "Income and expenses": [
+    "Reseita no despeza",
+    "Pemasukan dan pengeluaran"
+  ],
+  "Ask": [
+    "Husu",
+    "Tanya"
+  ],
+  "Questions about fish and plants": [
+    "Pergunta kona-ba ikan no modo",
+    "Pertanyaan tentang ikan dan tanaman"
+  ],
+  "How is my farm?": [
+    "Hau-nia to'os oinsá?",
+    "Bagaimana kebun saya?"
+  ],
+  "Any alerts?": [
+    "Iha alerta ruma?",
+    "Ada peringatan?"
+  ],
+  "What is running?": [
+    "Saida mak la'o?",
+    "Apa yang sedang berjalan?"
+  ],
+  "Turn on aeration": [
+    "Loke aerasaun",
+    "Nyalakan aerasi"
+  ],
+  "Turn off irrigation": [
+    "Taka irrigasaun",
+    "Matikan irigasi"
+  ],
+  "Turn on the pump": [
+    "Loke pompa",
+    "Nyalakan pompa"
+  ],
+  "I sold something": [
+    "Hau faan buat ruma",
+    "Saya menjual sesuatu"
+  ],
+  "I spent money": [
+    "Hau gasta osan",
+    "Saya mengeluarkan uang"
+  ],
+  "How much profit this month?": [
+    "Lukru hira fulan ne'e?",
+    "Berapa laba bulan ini?"
+  ],
+  "Show my expenses": [
+    "Hatudu hau-nia despeza",
+    "Tampilkan pengeluaran saya"
+  ],
+  "Hello! I'm Tulun VIEM. I will message you here when something on the farm needs attention. You can also ask how the farm is doing, or tell me to turn equipment on or off.": [
+    "Olá! Hau Tulun VIEM. Hau sei haruka mensajen mai ita iha ne'e bainhira buat ruma iha to'os presiza atensaun. Ita mós bele husu to'os oinsá, ka dehan hau atu loke ka taka ekipamentu.",
+    "Halo! Saya Tulun VIEM. Saya akan mengirim pesan di sini saat ada yang perlu diperhatikan di kebun. Anda juga bisa bertanya bagaimana kebun, atau menyuruh saya menyalakan atau mematikan peralatan."
+  ],
+  "Tell me what you earned or spent, for example “Sold 5 kg lettuce for $15” or “Bought fish feed $12”. I will ask you to confirm before I save it.": [
+    "Hatete mai hau saida mak ita hetan ka gasta, ezemplu “Faan alfase kg 5 ho $15” ka “Sosa hahán ikan $12”. Hau sei husu ita atu konfirma molok rai.",
+    "Beri tahu saya apa yang Anda terima atau keluarkan, misalnya “Jual selada 5 kg seharga $15” atau “Beli pakan ikan $12”. Saya akan meminta konfirmasi sebelum menyimpan."
+  ],
+  "Okay, I cancelled that.": [
+    "Di'ak, hau kansela ona.",
+    "Baik, saya sudah membatalkannya."
+  ],
+  "Done. {0} is now {1} in {2}.": [
+    "Remata ona. {0} agora {1} iha {2}.",
+    "Selesai. {0} sekarang {1} di {2}."
+  ],
+  "{0} stays {1} because of a safety rule. Check the Equipment page for details.": [
+    "{0} sei {1} tanba regra seguransa. Haree pájina Ekipamentu ba detallu.",
+    "{0} tetap {1} karena aturan keselamatan. Lihat halaman Peralatan untuk rinciannya."
+  ],
+  "Saved. You can see it in Buku Besar.": [
+    "Rai ona. Ita bele haree iha Buku Besar.",
+    "Tersimpan. Anda bisa melihatnya di Buku Besar."
+  ],
+  "Chats": [
+    "Xat sira",
+    "Obrolan"
+  ],
+  "Type what you earned or spent…": [
+    "Hakerek saida mak ita hetan ka gasta…",
+    "Ketik apa yang Anda terima atau keluarkan…"
+  ],
+  "Type a message…": [
+    "Hakerek mensajen ida…",
+    "Ketik pesan…"
+  ],
+  "Equipment only changes after you tap Yes, and an alert only closes when a person confirms it.": [
+    "Ekipamentu muda de'it depois ita hili Sin, no alerta taka de'it bainhira ema ida konfirma.",
+    "Peralatan hanya berubah setelah Anda mengetuk Ya, dan peringatan hanya ditutup saat seseorang mengonfirmasinya."
+  ],
+  "Set": [
+    "Set",
+    "Set"
+  ],
+  "Yes": [
+    "Sin",
+    "Ya"
+  ],
+  "No": [
+    "Lae",
+    "Tidak"
+  ],
+  "Done": [
+    "Remata",
+    "Selesai"
+  ],
+  "Cancelled": [
+    "Kansela ona",
+    "Dibatalkan"
+  ],
+  "Open the Farm chat": [
+    "Loke xat To'os",
+    "Buka obrolan Kebun"
+  ],
+  "Open the Money chat": [
+    "Loke xat Osan",
+    "Buka obrolan Uang"
+  ],
+  "Open the Ask chat": [
+    "Loke xat Husu",
+    "Buka obrolan Tanya"
+  ],
+  "Full dashboard": [
+    "Dashboard kompletu",
+    "Dasbor lengkap"
+  ],
+  "Simple chat": [
+    "Xat simples",
+    "Obrolan sederhana"
+  ],
+  "{0}: {1} {2}, {3}": [
+    "{0}: {1} {2}, {3}",
+    "{0}: {1} {2}, {3}"
+  ],
+  "New here? Chat with Tulun VIEM": [
+    "Foun iha ne'e? Hasoru malu ho Tulun VIEM",
+    "Baru di sini? Mengobrol dengan Tulun VIEM"
+  ],
+  "Check your farm, record money and turn equipment on or off with simple messages. Alerts arrive there too.": [
+    "Verifika ita-nia to'os, rejista osan no loke ka taka ekipamentu ho mensajen simples. Alerta mós mai iha neba.",
+    "Periksa kebun, catat uang, dan nyalakan atau matikan peralatan dengan pesan sederhana. Peringatan juga masuk ke sana."
+  ],
+  "Open Tulun VIEM": [
+    "Loke Tulun VIEM",
+    "Buka Tulun VIEM"
+  ],
+  "Display": [
+    "Aprezentasaun",
+    "Tampilan"
+  ],
+  "Choose how much help and detail the pages show.": [
+    "Hili ajuda no detallu hira mak pájina sira hatudu.",
+    "Pilih seberapa banyak bantuan dan rincian yang ditampilkan halaman."
+  ],
+  "Show page help and keep advanced sections folded away": [
+    "Hatudu ajuda pájina no taka seksaun avansadu",
+    "Tampilkan bantuan halaman dan lipat bagian lanjutan"
   ]
 };

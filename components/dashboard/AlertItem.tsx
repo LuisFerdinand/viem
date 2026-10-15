@@ -5,6 +5,7 @@ import { useLanguage, useDashboardFormatters } from "./LanguageProvider";
 import { Check, Clock, MessageCircle, MessageSquareText, OctagonAlert, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { ALERT_LABEL, SENSORS, isSensorKey } from "@/lib/domain";
+import { unitLabel } from "@/lib/sim/store";
 import type { AlertDTO, UnitDTO } from "@/lib/types";
 import { cn, fmtDuration } from "@/lib/utils";
 import { useNow, useSnapshot, useStore } from "./DashboardProvider";
@@ -75,7 +76,7 @@ export function AlertItem({ alert, unit, compact = false }: { alert: AlertDTO; u
             )}
           </div>
           <p className="mt-1 text-xs text-muted">
-            {tr(unit ? `${unit.name} · ` : "")}
+            {tr(unit ? `${unitLabel(snap, unit.id)} · ` : "")}
             {tr(fmtDateTime(alert.createdAt))}
             {tr(now ? ` (${fmtRelative(alert.createdAt, now)})` : "")}
             {" · "}

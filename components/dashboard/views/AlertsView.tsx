@@ -4,7 +4,7 @@ import { useLanguage } from "../LanguageProvider";
 
 import { BellOff, CheckCheck, Timer } from "lucide-react";
 import { useState } from "react";
-import { selectUnit } from "@/lib/sim/store";
+import { selectUnit, unitLabel } from "@/lib/sim/store";
 import { fmtDuration } from "@/lib/utils";
 import { AlertItem } from "../AlertItem";
 import { useSnapshot, useStore } from "../DashboardProvider";
@@ -41,7 +41,7 @@ export function AlertsView() {
       <PageHeader
         title={tr("Alerts")}
         description={tr("Read each alert, check the farm, then confirm what you found.")}
-        actions={<Segmented label={tr("Scope")} value={scope} onChange={setScope} options={[{ value: "all", label: "All units" }, { value: "unit", label: unit.name }]} />}
+        actions={<Segmented label={tr("Scope")} value={scope} onChange={setScope} options={[{ value: "all", label: "All units" }, { value: "unit", label: unitLabel(snap, unit.id) }]} />}
       />
 
       <div className="grid gap-4 sm:grid-cols-3">
@@ -87,7 +87,7 @@ export function AlertsView() {
           </ul>
         ) : (
           <EmptyState icon={BellOff} title={tr(tab === "attention" ? "Nothing needs acknowledgement" : "No alerts here")}>
-            {tr("Turn on a demo scenario on the Overview page — for example a pump failure — to watch an alert arrive.")}</EmptyState>
+            {tr("Turn on a demo scenario on the Equipment page — for example a pump failure — to watch an alert arrive.")}</EmptyState>
         )}
         <p className="mt-4 flex items-center gap-1.5 text-xs text-muted">
           <Timer className="size-3.5" aria-hidden="true" />

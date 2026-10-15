@@ -1,22 +1,15 @@
-import {
-  ACTUATOR_KINDS,
-  CROPS,
-  BUYERS,
-  DEFAULT_PRESET,
-  PRESETS,
-  SENSOR_KEYS,
-  type ActuatorKind,
-  type ActuatorMode,
-  type HarvestStatus,
-} from "./domain";
+import { CROPS, BUYERS, DEFAULT_PRESET, PRESETS, type ActuatorKind, type ActuatorMode, type HarvestStatus } from "./domain";
+import { buildSetDefaults } from "./hubs";
 import type {
   ActuatorDTO,
   AlertDTO,
   DashboardData,
   EventDTO,
   HarvestDTO,
+  HubDTO,
   RuleDTO,
   ThresholdDTO,
+  LedgerDTO,
   UnitDTO,
 } from "./types";
 
@@ -32,7 +25,7 @@ export function mulberry32(seed: number) {
   };
 }
 
-export const SEED_UNITS: (UnitDTO & { sortOrder: number })[] = [
+export const SEED_HUBS: (HubDTO & { sortOrder: number })[] = [
   {
     id: "hub-dili",
     name: "VIEM Hub",
@@ -40,10 +33,6 @@ export const SEED_UNITS: (UnitDTO & { sortOrder: number })[] = [
     site: "Demonstration farm & training centre",
     location: "Near Dili",
     municipality: "Dili",
-    crops: "Lettuce, pak choi, kangkung, basil · Tilapia",
-    fishCount: 600,
-    tankLiters: 4000,
-    operatorTeam: 5,
     installedAt: "2026-07-01",
     sortOrder: 0,
   },
@@ -54,10 +43,6 @@ export const SEED_UNITS: (UnitDTO & { sortOrder: number })[] = [
     site: "School site",
     location: "Highland school garden",
     municipality: "Aileu",
-    crops: "Lettuce, pak choi, basil · Tilapia",
-    fishCount: 300,
-    tankLiters: 2000,
-    operatorTeam: 4,
     installedAt: "2026-08-15",
     sortOrder: 1,
   },
@@ -68,44 +53,26 @@ export const SEED_UNITS: (UnitDTO & { sortOrder: number })[] = [
     site: "Suco office",
     location: "Coastal suco office",
     municipality: "Liquiçá",
-    crops: "Kangkung, lettuce · Tilapia",
-    fishCount: 300,
-    tankLiters: 2000,
-    operatorTeam: 3,
     installedAt: "2026-08-22",
     sortOrder: 2,
   },
 ];
 
-type ActuatorSeed = { mode: ActuatorMode; isOn: boolean; on?: number; off?: number };
-
-const ACTUATOR_SEED: Record<string, Record<ActuatorKind, ActuatorSeed>> = {
-  "hub-dili": {
-    pump: { mode: "auto", isOn: false },
-    aeration: { mode: "auto", isOn: true },
-    irrigation: { mode: "schedule", isOn: false, on: 15, off: 45 },
-    circulation: { mode: "manual", isOn: true },
-  },
-  "suku-aileu": {
-    pump: { mode: "auto", isOn: false },
-    aeration: { mode: "auto", isOn: true },
-    irrigation: { mode: "schedule", isOn: false, on: 20, off: 40 },
-    circulation: { mode: "manual", isOn: true },
-  },
-  "suku-liquica": {
-    pump: { mode: "manual", isOn: false },
-    aeration: { mode: "auto", isOn: true },
-    irrigation: { mode: "auto", isOn: false },
-    circulation: { mode: "manual", isOn: true },
-  },
-};
-
-export const DEFAULT_RULES: Omit<RuleDTO, "id" | "unitId">[] = [
-  { actuator: "aeration", sensor: "do", condition: "below", onValue: 5.5, offValue: 7.2, enabled: true },
-  { actuator: "pump", sensor: "waterLevel", condition: "below", onValue: 45, offValue: 85, enabled: true },
-  { actuator: "circulation", sensor: "waterTemp", condition: "above", onValue: 28.5, offValue: 27.0, enabled: true },
-  { actuator: "irrigation", sensor: "humidity", condition: "below", onValue: 62, offValue: 74, enabled: true },
+/** The first set of each hub keeps the id the hub had before sets existed. */
+export const SEED_UNITS: (UnitDTO & { sortOrder: number; harvest: string[] })[] = [
+  { id: "hub-dili", hubId: "hub-dili", name: "Set 1", presetId: "aquaponics-tilapia", crops: "Lettuce, pak choi, kangkung, basil · Tilapia", fishCount: 600, tankLiters: 4000, operatorTeam: 5, sortOrder: 0, harvest: ["lettuce", "pak-choi", "kangkung", "basil", "tilapia"] },
+  { id: "hub-dili-set2", hubId: "hub-dili", name: "Set 2", presetId: "nft-greens", crops: "Pak choi, kangkung", fishCount: 0, tankLiters: 1500, operatorTeam: 5, sortOrder: 1, harvest: ["pak-choi", "kangkung"] },
+  { id: "hub-dili-set3", hubId: "hub-dili", name: "Set 3", presetId: "lettuce-vegetative", crops: "Lettuce", fishCount: 0, tankLiters: 1500, operatorTeam: 5, sortOrder: 2, harvest: ["lettuce"] },
+  { id: "hub-dili-set4", hubId: "hub-dili", name: "Set 4", presetId: "basil-vegetative", crops: "Basil", fishCount: 0, tankLiters: 1200, operatorTeam: 5, sortOrder: 3, harvest: ["basil"] },
+  { id: "hub-dili-set5", hubId: "hub-dili", name: "Set 5", presetId: "fingerling-nursery", crops: "Tilapia fingerlings", fishCount: 1200, tankLiters: 800, operatorTeam: 5, sortOrder: 4, harvest: ["tilapia"] },
+  { id: "suku-aileu", hubId: "suku-aileu", name: "Set 1", presetId: "aquaponics-tilapia", crops: "Lettuce, pak choi, basil · Tilapia", fishCount: 300, tankLiters: 2000, operatorTeam: 4, sortOrder: 5, harvest: ["lettuce", "pak-choi", "basil", "tilapia"] },
+  { id: "suku-liquica", hubId: "suku-liquica", name: "Set 1", presetId: "aquaponics-tilapia", crops: "Kangkung, lettuce · Tilapia", fishCount: 300, tankLiters: 2000, operatorTeam: 3, sortOrder: 6, harvest: ["kangkung", "lettuce", "tilapia"] },
 ];
+
+const ACTUATOR_SEED: Record<string, Partial<Record<ActuatorKind, { mode: ActuatorMode; isOn: boolean; on?: number; off?: number }>>> = {
+  "suku-aileu": { irrigation: { mode: "schedule", isOn: false, on: 20, off: 40 } },
+  "suku-liquica": { pump: { mode: "manual", isOn: false }, irrigation: { mode: "auto", isOn: false } },
+};
 
 function isoDaysAgo(now: Date, days: number, hour = 9, minute = 0) {
   const d = new Date(now);
@@ -118,6 +85,8 @@ function dateDaysAgo(now: Date, days: number) {
   return isoDaysAgo(now, days).slice(0, 10);
 }
 
+const firstUnitOf = (hubId: string) => SEED_UNITS.find((u) => u.hubId === hubId)?.id;
+
 export function buildSeed(now = new Date()) {
   const thresholds: Omit<ThresholdDTO, "id">[] = [];
   const actuators: Omit<ActuatorDTO, "id">[] = [];
@@ -125,43 +94,48 @@ export function buildSeed(now = new Date()) {
   const harvests: Omit<HarvestDTO, "id" | "paidAt">[] = [];
   const alerts: Omit<AlertDTO, "id">[] = [];
   const events: Omit<EventDTO, "id">[] = [];
+  const ledger: Omit<LedgerDTO, "id">[] = [];
+
+  for (const hub of SEED_HUBS) {
+    const first = SEED_UNITS.find((u) => u.hubId === hub.id)!;
+    events.push({
+      unitId: first.id,
+      category: "system",
+      message: `${hub.name} commissioned — sensor kit and LoRa gateway online`,
+      actor: "VIEM technician",
+      createdAt: `${hub.installedAt}T02:00:00.000Z`,
+    });
+  }
 
   for (const unit of SEED_UNITS) {
-    for (const sensor of SENSOR_KEYS) {
-      thresholds.push({ unitId: unit.id, sensor, ...DEFAULT_PRESET.values[sensor], alarmEnabled: true });
+    const hub = SEED_HUBS.find((h) => h.id === unit.hubId)!;
+    const preset = PRESETS.find((p) => p.id === unit.presetId) ?? DEFAULT_PRESET;
+    const defaults = buildSetDefaults(unit.id, preset, "VIEM technician", new Date(isoDaysAgo(now, 3)));
+    thresholds.push(...defaults.thresholds);
+    for (const a of defaults.actuators) {
+      const o = ACTUATOR_SEED[unit.id]?.[a.kind];
+      actuators.push(o ? { ...a, mode: o.mode, isOn: o.isOn, scheduleOnMin: o.on ?? a.scheduleOnMin, scheduleOffMin: o.off ?? a.scheduleOffMin } : a);
     }
-    for (const kind of ACTUATOR_KINDS) {
-      const s = ACTUATOR_SEED[unit.id][kind];
-      actuators.push({
-        unitId: unit.id,
-        kind,
-        mode: s.mode,
-        isOn: s.isOn,
-        scheduleOnMin: s.on ?? 15,
-        scheduleOffMin: s.off ?? 45,
-        updatedAt: isoDaysAgo(now, 3),
-        updatedBy: "VIEM technician",
-      });
-    }
-    for (const r of DEFAULT_RULES) rules.push({ ...r, unitId: unit.id });
+    rules.push(...defaults.rules);
 
     // Eight weeks of harvest history — roughly the proposal's US$350–500/month per Suku Unit.
     const rand = mulberry32(unit.id.length * 7919 + unit.sortOrder * 104729);
-    const scale = unit.kind === "hub" ? 1.5 : unit.id === "suku-liquica" ? 0.85 : 1;
-    const weekly: { crop: string; min: number; max: number; every?: number }[] = [
-      { crop: "lettuce", min: 9, max: 15 },
-      { crop: "pak-choi", min: 6, max: 10 },
-      { crop: "kangkung", min: 5, max: 9 },
-      { crop: "basil", min: 1.2, max: 2.4 },
-      { crop: "tilapia", min: 22, max: 34, every: 4 },
-    ];
+    const scale = hub.kind === "hub" ? (unit.harvest.length > 2 ? 1.5 : 0.7) : unit.id === "suku-liquica" ? 0.85 : 1;
+    const amounts: Record<string, { min: number; max: number; every?: number }> = {
+      lettuce: { min: 9, max: 15 },
+      "pak-choi": { min: 6, max: 10 },
+      kangkung: { min: 5, max: 9 },
+      basil: { min: 1.2, max: 2.4 },
+      tilapia: { min: 11, max: 17, every: 2 },
+    };
+    const weekly = unit.harvest.map((crop) => ({ crop, ...amounts[crop] }));
     for (let w = 7; w >= 0; w--) {
       for (const [i, item] of weekly.entries()) {
         if (item.every && (w + unit.sortOrder) % item.every !== 0) continue;
         const crop = CROPS.find((c) => c.id === item.crop)!;
         const days = w * 7 + ((i + unit.sortOrder) % 5);
         const kg = Math.round((item.min + rand() * (item.max - item.min)) * scale * 10) / 10;
-        const status: HarvestStatus = days > 14 ? "paid" : days > 5 ? "collected" : "logged";
+        const status: HarvestStatus = days > 5 ? "paid" : days > 2 ? "collected" : "logged";
         harvests.push({
           unitId: unit.id,
           crop: crop.id,
@@ -175,13 +149,23 @@ export function buildSeed(now = new Date()) {
       }
     }
 
-    events.push({
-      unitId: unit.id,
-      category: "system",
-      message: `${unit.name} commissioned — sensor kit and LoRa gateway online`,
-      actor: "VIEM technician",
-      createdAt: `${unit.installedAt}T02:00:00.000Z`,
-    });
+    // Running costs in line with the proposal (roughly US$110 a month per Suku Unit).
+    const size = hub.kind === "hub" ? 1.3 : 1;
+    const first = unit.id === firstUnitOf(hub.id);
+    const spend = (w: number, category: LedgerDTO["category"], amount: number, description: string, counterparty: string) =>
+      ledger.push({ unitId: unit.id, type: "expense", category, amountCents: Math.round(amount * size * 100), date: dateDaysAgo(now, w * 7 + 1 + (unit.sortOrder % 3)), description, counterparty, reference: "" });
+    for (let w = 0; w < 8; w++) {
+      if (unit.fishCount > 0) spend(w, "Fish feed", 3 + unit.fishCount * 0.008, "Weekly fish feed", "Dili feed store");
+      if (w % 4 === 0) {
+        spend(w, "Nutrients", 9 + (w % 8) / 2, "Nutrients and compost inputs", "Cooperative");
+        if (first) spend(w, "Utilities", 9, "Mobile data and power top-up", "Telecom");
+      }
+      if (w % 4 === 2) {
+        spend(w, "Seeds & seedlings", 8, "Seedlings for the next planting", "Nursery");
+        if (first) spend(w, "Transport", 10, "Transport of produce to buyers", "Local driver");
+      }
+    }
+
     events.push({
       unitId: unit.id,
       category: "maintenance",
@@ -193,7 +177,7 @@ export function buildSeed(now = new Date()) {
       unitId: unit.id,
       category: "maintenance",
       message: "Weekly manual test strip logged — pH 7.0, ammonia 0.25 ppm",
-      actor: "Cooperative operator",
+      actor: hub.kind === "hub" ? "Hub operator" : "Cooperative operator",
       createdAt: isoDaysAgo(now, 2, 8, 30),
     });
   }
@@ -244,7 +228,7 @@ export function buildSeed(now = new Date()) {
     },
   );
 
-  return { thresholds, actuators, rules, harvests, alerts, events };
+  return { thresholds, actuators, rules, harvests, alerts, events, ledger };
 }
 
 /** In-memory dataset used when the database is unreachable. */
@@ -255,6 +239,7 @@ export function buildFallbackData(note: string): DashboardData {
   return {
     source: "fallback",
     sourceNote: note,
+    hubs: SEED_HUBS.map(toHubDTO),
     units: SEED_UNITS.map(toUnitDTO),
     thresholds: withId(seed.thresholds),
     actuators: withId(seed.actuators),
@@ -262,23 +247,24 @@ export function buildFallbackData(note: string): DashboardData {
     alerts: withId(seed.alerts).reverse(),
     events: withId(seed.events).sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
     harvests: withId(seed.harvests).map((h) => ({ ...h, paidAt: h.status === "paid" ? h.harvestedAt : null })).sort((a, b) => b.harvestedAt.localeCompare(a.harvestedAt)),
-    ledger: [],
+    ledger: withId(seed.ledger),
     presets: PRESETS,
   };
+}
+
+export function toHubDTO(h: HubDTO): HubDTO {
+  return { id: h.id, name: h.name, kind: h.kind, site: h.site, location: h.location, municipality: h.municipality, installedAt: h.installedAt };
 }
 
 export function toUnitDTO(u: UnitDTO): UnitDTO {
   return {
     id: u.id,
+    hubId: u.hubId,
     name: u.name,
-    kind: u.kind,
-    site: u.site,
-    location: u.location,
-    municipality: u.municipality,
+    presetId: u.presetId,
     crops: u.crops,
     fishCount: u.fishCount,
     tankLiters: u.tankLiters,
     operatorTeam: u.operatorTeam,
-    installedAt: u.installedAt,
   };
 }

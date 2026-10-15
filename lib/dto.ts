@@ -5,6 +5,7 @@ import type {
   AlertDTO,
   EventDTO,
   HarvestDTO,
+  HubDTO,
   RuleDTO,
   ThresholdDTO,
   UnitDTO,
@@ -14,18 +15,25 @@ import type {
 
 type Row<T extends { $inferSelect: unknown }> = T["$inferSelect"];
 
-export const toUnit = (r: Row<typeof s.units>): UnitDTO => ({
+export const toHub = (r: Row<typeof s.hubs>): HubDTO => ({
   id: r.id,
   name: r.name,
   kind: r.kind,
   site: r.site,
   location: r.location,
   municipality: r.municipality,
+  installedAt: r.installedAt,
+});
+
+export const toUnit = (r: Row<typeof s.units>): UnitDTO => ({
+  id: r.id,
+  hubId: r.hubId,
+  name: r.name,
+  presetId: r.presetId,
   crops: r.crops,
   fishCount: r.fishCount,
   tankLiters: r.tankLiters,
   operatorTeam: r.operatorTeam,
-  installedAt: r.installedAt,
 });
 
 export const toThreshold = (r: Row<typeof s.thresholds>): ThresholdDTO => ({

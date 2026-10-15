@@ -4,15 +4,16 @@ import { connection } from "next/server";
 import { db } from "./db/client";
 import * as s from "./db/schema";
 import { seedDatabase } from "./db/seed";
-import { toActuator, toAlert, toEvent, toHarvest, toRule, toThreshold, toUnit } from "./dto";
+import { toActuator, toAlert, toEvent, toHarvest, toHub, toRule, toThreshold, toUnit } from "./dto";
 import { buildFallbackData } from "./seed-data";
 import type { DashboardData } from "./types";
 
 export async function queryDashboardData(): Promise<Omit<DashboardData, "source">> {
   const database = db!;
-  const [units, thresholds, actuators, rules, openAlerts, recentAlerts, events, harvests, ledger, presets] =
+  const [hubs, units, thresholds, actuators, rules, openAlerts, recentAlerts, events, harvests, ledger, presets] =
     await Promise.all([
-      database.select().from(s.units).orderBy(asc(s.units.sortOrder)),
+      database.select().from(s.hubs).orderBy(asc(s.hubs.sortOrder), asc(s.hubs.createdAt)),
+      database.select().from(s.units).orderBy(asc(s.units.sortOrder), asc(s.units.createdAt)),
       database.select().from(s.thresholds),
       database.select().from(s.actuators),
       database.select().from(s.automationRules).orderBy(asc(s.automationRules.id)),
@@ -34,6 +35,7 @@ export async function queryDashboardData(): Promise<Omit<DashboardData, "source"
   for (const a of [...recentAlerts, ...openAlerts]) alertMap.set(a.id, a);
 
   return {
+    hubs: hubs.map(toHub),
     units: units.map(toUnit),
     thresholds: thresholds.map(toThreshold),
     actuators: actuators.map(toActuator),
@@ -61,7 +63,7 @@ export async function loadDashboardData(): Promise<DashboardData> {
   }
   try {
     let data = await queryDashboardData();
-    if (data.units.length === 0) {
+    if (data.hubs.length === 0) {
       await seedDatabase(db);
       data = await queryDashboardData();
     }

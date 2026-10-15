@@ -3,7 +3,8 @@
 import { and, desc, eq, inArray, isNull, lt, sql } from "drizzle-orm";
 import { z } from "zod";
 import type { BatchItem } from "drizzle-orm/batch";
-import { ledgerSchema, presetSchema } from "./dashboard-validation";
+import { hubInputSchema, ledgerSchema, presetSchema, setInputSchema, type HubInput, type SetInput } from "./dashboard-validation";
+import { MAX_HUBS, MAX_SETS_PER_HUB, buildSetDefaults, newEntityId } from "./hubs";
 import { todayInDili } from "./utils";
 import type { Preset } from "./domain";
 import type { LedgerDTO } from "./types";
@@ -26,7 +27,7 @@ import {
   type ActuatorKind,
   type EventCategory,
 } from "./domain";
-import { toActuator, toAlert, toEvent, toHarvest, toRule, toThreshold } from "./dto";
+import { toActuator, toAlert, toEvent, toHarvest, toHub, toRule, toThreshold, toUnit } from "./dto";
 import type {
   ActionResult,
   ActuatorDTO,
@@ -34,8 +35,10 @@ import type {
   DashboardData,
   EventDTO,
   HarvestDTO,
+  HubDTO,
   RuleDTO,
   ThresholdDTO,
+  UnitDTO,
 } from "./types";
 
 /*
@@ -286,6 +289,7 @@ export async function applyPreset(input: {
         message: `Preset applied: ${preset.label}${v.includeRules ? " (alarms, rules and Auto modes)" : " (alarms)"}`,
         actor: v.actor,
       }),
+      database.update(s.units).set({ presetId: v.presetId }).where(eq(s.units.id, v.unitId)),
       ...updates,
     ];
     if (v.includeRules) {
@@ -675,5 +679,122 @@ export async function deleteLedgerEntry(input: { id: number; unitId: string }): 
     const id = z.number().int().positive().parse(input.id);
     await database.delete(s.ledgerEntries).where(and(eq(s.ledgerEntries.id, id), eq(s.ledgerEntries.unitId, unitId.parse(input.unitId))));
     return { id };
+  });
+}
+
+/* ------------------------------------------------------------------ */
+/* Hubs & sets                                                         */
+/* ------------------------------------------------------------------ */
+
+type SetCreated = { unit: UnitDTO; thresholds: ThresholdDTO[]; actuators: ActuatorDTO[]; rules: RuleDTO[] };
+
+async function findPreset(database: NonNullable<typeof db>, id: string): Promise<Preset> {
+  const [saved] = await database.select().from(s.automationPresets).where(eq(s.automationPresets.id, id));
+  const preset = saved?.definition ?? PRESETS.find((p) => p.id === id);
+  if (!preset) throw new Error("Unknown growing profile");
+  return preset;
+}
+
+/** Statements that create one set with its alarm limits, equipment and automation rules. */
+function insertSet(database: NonNullable<typeof db>, hubId: string, input: SetInput, preset: Preset, sortOrder: number, who: string) {
+  const unitId = newEntityId(`${hubId}-${input.name}`);
+  const defaults = buildSetDefaults(unitId, preset, who);
+  return {
+    unitId,
+    statements: [
+      database
+        .insert(s.units)
+        .values({ id: unitId, hubId, name: input.name, presetId: preset.id, crops: preset.crop, fishCount: input.fishCount, tankLiters: input.tankLiters, operatorTeam: 3, sortOrder })
+        .returning(),
+      database.insert(s.thresholds).values(defaults.thresholds).returning(),
+      database.insert(s.actuators).values(defaults.actuators.map((a) => ({ ...a, updatedAt: new Date(a.updatedAt) }))).returning(),
+      database.insert(s.automationRules).values(defaults.rules).returning(),
+    ] as const,
+  };
+}
+
+const nextOrder = async (database: NonNullable<typeof db>, table: typeof s.hubs | typeof s.units) =>
+  ((await database.select({ n: sql<number>`coalesce(max(${table.sortOrder}), -1)::int` }).from(table))[0]?.n ?? -1) + 1;
+
+export async function createHub(input: {
+  hub: HubInput;
+  set: SetInput;
+  actor: string;
+}): Promise<ActionResult<{ hub: HubDTO; created: SetCreated; event: EventDTO }>> {
+  return run(async (database) => {
+    const who = actor.parse(input.actor);
+    const hub = hubInputSchema.parse(input.hub);
+    const set = setInputSchema.parse(input.set);
+    const [{ n }] = await database.select({ n: sql<number>`count(*)::int` }).from(s.hubs);
+    if (n >= MAX_HUBS) throw new Error(`This demo is limited to ${MAX_HUBS} hubs. Remove one before adding another.`);
+    const preset = await findPreset(database, set.presetId);
+    const hubId = newEntityId(hub.name);
+    const hubOrder = await nextOrder(database, s.hubs);
+    const unitOrder = await nextOrder(database, s.units);
+    const created = insertSet(database, hubId, set, preset, unitOrder, who);
+    const [[hubRow], [unitRow], thresholds, actuators, rules, [ev]] = await database.batch([
+      database.insert(s.hubs).values({ id: hubId, ...hub, site: hub.site || "Farm site", kind: "hub", installedAt: todayInDili(), sortOrder: hubOrder }).returning(),
+      ...created.statements,
+      eventInsert(database, { unitId: created.unitId, category: "config", message: `Hub added: ${hub.name} (${hub.municipality}) with ${set.name}`, actor: who }),
+    ]);
+    return {
+      hub: toHub(hubRow),
+      created: { unit: toUnit(unitRow), thresholds: thresholds.map(toThreshold), actuators: actuators.map(toActuator), rules: rules.map(toRule) },
+      event: toEvent(ev),
+    };
+  });
+}
+
+export async function createSet(input: { hubId: string; set: SetInput; actor: string }): Promise<ActionResult<{ created: SetCreated; event: EventDTO }>> {
+  return run(async (database) => {
+    const who = actor.parse(input.actor);
+    const hubId = unitId.parse(input.hubId);
+    const set = setInputSchema.parse(input.set);
+    const [hub] = await database.select().from(s.hubs).where(eq(s.hubs.id, hubId));
+    if (!hub) throw new Error("Hub not found");
+    const [{ n }] = await database.select({ n: sql<number>`count(*)::int` }).from(s.units).where(eq(s.units.hubId, hubId));
+    if (n >= MAX_SETS_PER_HUB) throw new Error(`A hub can have at most ${MAX_SETS_PER_HUB} sets in this demo.`);
+    const preset = await findPreset(database, set.presetId);
+    const created = insertSet(database, hubId, set, preset, await nextOrder(database, s.units), who);
+    const [[unitRow], thresholds, actuators, rules, [ev]] = await database.batch([
+      ...created.statements,
+      eventInsert(database, { unitId: created.unitId, category: "config", message: `Set added to ${hub.name}: ${set.name} (${preset.label})`, actor: who }),
+    ]);
+    return {
+      created: { unit: toUnit(unitRow), thresholds: thresholds.map(toThreshold), actuators: actuators.map(toActuator), rules: rules.map(toRule) },
+      event: toEvent(ev),
+    };
+  });
+}
+
+export async function deleteSet(input: { unitId: string; actor: string }): Promise<ActionResult<{ unitId: string; event: EventDTO }>> {
+  return run(async (database) => {
+    const v = z.object({ unitId, actor }).parse(input);
+    const [unit] = await database.select().from(s.units).where(eq(s.units.id, v.unitId));
+    if (!unit) throw new Error("Set not found");
+    const [{ n }] = await database.select({ n: sql<number>`count(*)::int` }).from(s.units).where(eq(s.units.hubId, unit.hubId));
+    if (n <= 1) throw new Error("A hub needs at least one set. Remove the whole hub instead.");
+    const [hub] = await database.select().from(s.hubs).where(eq(s.hubs.id, unit.hubId));
+    // Sets cascade to their alarm limits, equipment, alerts, harvests and money records.
+    const [, [ev]] = await database.batch([
+      database.delete(s.units).where(eq(s.units.id, v.unitId)),
+      eventInsert(database, { unitId: null, category: "config", message: `Set removed from ${hub?.name ?? "hub"}: ${unit.name}`, actor: v.actor }),
+    ]);
+    return { unitId: v.unitId, event: toEvent(ev) };
+  });
+}
+
+export async function deleteHub(input: { hubId: string; actor: string }): Promise<ActionResult<{ hubId: string; event: EventDTO }>> {
+  return run(async (database) => {
+    const v = z.object({ hubId: unitId, actor }).parse(input);
+    const [hub] = await database.select().from(s.hubs).where(eq(s.hubs.id, v.hubId));
+    if (!hub) throw new Error("Hub not found");
+    const [{ n }] = await database.select({ n: sql<number>`count(*)::int` }).from(s.hubs);
+    if (n <= 1) throw new Error("Keep at least one hub in the dashboard.");
+    const [, [ev]] = await database.batch([
+      database.delete(s.hubs).where(eq(s.hubs.id, v.hubId)),
+      eventInsert(database, { unitId: null, category: "config", message: `Hub removed: ${hub.name}`, actor: v.actor }),
+    ]);
+    return { hubId: v.hubId, event: toEvent(ev) };
   });
 }

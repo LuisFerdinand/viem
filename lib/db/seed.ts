@@ -1,5 +1,5 @@
 import type { BatchItem } from "drizzle-orm/batch";
-import { buildSeed, SEED_UNITS } from "../seed-data";
+import { buildSeed, SEED_HUBS, SEED_UNITS } from "../seed-data";
 import type { Database } from "./client";
 import * as s from "./schema";
 import { PRESETS } from "../domain";
@@ -13,8 +13,9 @@ export async function seedDatabase(db: Database) {
   const statements: BatchItem<"pg">[] = [
     db.delete(s.events),
     db.delete(s.automationPresets),
-    db.delete(s.units), // cascades to thresholds, actuators, rules, alerts, harvests
-    db.insert(s.units).values(SEED_UNITS),
+    db.delete(s.hubs), // cascades to sets, thresholds, actuators, rules, alerts, harvests
+    db.insert(s.hubs).values(SEED_HUBS),
+    db.insert(s.units).values(SEED_UNITS.map(({ harvest, ...unit }) => (void harvest, unit))),
     db.insert(s.thresholds).values(seed.thresholds),
     db.insert(s.actuators).values(
       seed.actuators.map((a) => ({ ...a, updatedAt: new Date(a.updatedAt) })),
@@ -30,6 +31,7 @@ export async function seedDatabase(db: Database) {
         acknowledgedAt: a.acknowledgedAt ? new Date(a.acknowledgedAt) : null,
       })),
     ),
+    db.insert(s.ledgerEntries).values(seed.ledger),
     db.insert(s.events).values(seed.events.map((e) => ({ ...e, createdAt: new Date(e.createdAt) }))),
   ];
   await db.batch(statements as [BatchItem<"pg">, ...BatchItem<"pg">[]]);

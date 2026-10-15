@@ -13,6 +13,7 @@ import {
   TIMOR_OFFSET_HOURS,
   statusFor,
   type ActuatorKind,
+  type Preset,
   type SensorKey,
   type SensorStatus,
   type ThresholdValues,
@@ -87,8 +88,29 @@ const PROFILES: Record<string, SimProfile> = {
   "suku-liquica": { airBase: 29.4, airSwing: 3.6, humBase: 67, humSwing: 9, level: 62, ph: 7.2, ec: 1.35, waterTempOffset: -1.4, do: 5.9, solarPeakW: 900, batteryWh: 4800, battery: 66 },
 };
 
-export function profileFor(unitId: string): SimProfile {
-  return PROFILES[unitId] ?? PROFILES["hub-dili"];
+/**
+ * Simulation set-points for a set. The three original demo sites have hand-tuned
+ * profiles; every other set is centred on the middle of its growing profile
+ * ranges, so a healthy set stays "Normal" whatever it grows.
+ */
+export function profileFor(unitId: string, preset?: Preset): SimProfile {
+  const known = PROFILES[unitId];
+  if (known) return known;
+  const base = PROFILES["hub-dili"];
+  if (!preset) return base;
+  const v = preset.values;
+  const mid = (k: SensorKey) => (v[k].min + v[k].max) / 2;
+  return {
+    ...base,
+    airBase: mid("airTemp"),
+    humBase: mid("humidity"),
+    humSwing: 8,
+    level: v.waterLevel.min + 0.6 * (v.waterLevel.max - v.waterLevel.min),
+    ph: mid("ph"),
+    ec: mid("ec"),
+    waterTempOffset: mid("waterTemp") - mid("airTemp") + 0.5,
+    do: Math.max(mid("do"), v.do.min + 1.5),
+  };
 }
 
 export type Rand = () => number;
@@ -169,7 +191,7 @@ export function stepReading(
   const dissolved = clamp(toward(prev.do, doTarget, sc.pumpFailure ? 0.12 : 0.05) + noise(rand, 0.05), 0, 14);
 
   let ph = toward(prev.ph, p.ph, 0.01) - 0.0015;
-  if (circRuns) ph = toward(ph, 7.0, 0.03);
+  if (circRuns) ph = toward(ph, p.ph, 0.03);
   if (sc.phDrift) ph -= 0.035;
   ph = clamp(ph + noise(rand, 0.008), 4, 9.5);
 

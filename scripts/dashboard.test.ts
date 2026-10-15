@@ -3,8 +3,10 @@ import { test } from "node:test";
 import { calendarDate, ledgerSchema, presetSchema } from "../lib/dashboard-validation";
 import { PRESETS, SENSOR_CATEGORIES, SENSOR_KEYS } from "../lib/domain";
 import { csvCell, ledgerRows } from "../lib/ledger";
+import { financeSummary } from "../lib/finance";
 import { buildFallbackData } from "../lib/seed-data";
-import { DashboardStore } from "../lib/sim/store";
+import { profileFor } from "../lib/sim/engine";
+import { DashboardStore, selectHub, selectUnit, setsOf, unitLabel } from "../lib/sim/store";
 
 test("sensor categories cover each monitored sensor once", () => {
   const keys = SENSOR_CATEGORIES.flatMap((c) => [...c.sensors]);
@@ -56,6 +58,7 @@ test("CSV quotes notes and neutralizes formula-like user text", () => {
 test("offline store edits and deletes ledger entries and applies preset rules without duplicates", async () => {
   const d = buildFallbackData("test");
   d.harvests = [];
+  d.ledger = [];
   const store = new DashboardStore(d);
   const unitId = d.units[0].id;
   assert.equal(await store.saveLedger({ unitId, type: "expense", category: "Fish feed", amountCents: 500, date: "2026-10-11", description: "Feed", counterparty: "", reference: "" }), null);
@@ -78,4 +81,77 @@ test("offline store edits and deletes ledger entries and applies preset rules wi
   assert.equal(ledgerRows(store.getSnapshot().data, unitId).length, 1);
   await store.deleteLedger(row);
   assert.equal(store.getSnapshot().data.ledger.length, 0);
+});
+
+test("the VIEM Hub has five sets on different growing profiles, and every set belongs to a hub", () => {
+  const d = buildFallbackData("test");
+  const sets = d.units.filter((u) => u.hubId === "hub-dili");
+  assert.equal(sets.length, 5);
+  assert.equal(new Set(sets.map((u) => u.presetId)).size, 5);
+  for (const u of d.units) assert.ok(d.hubs.some((h) => h.id === u.hubId), u.id);
+  for (const u of d.units) assert.equal(d.thresholds.filter((t) => t.unitId === u.id).length, SENSOR_KEYS.length, u.id);
+});
+
+test("selecting a hub shows only its sets and remembers the set last used there", () => {
+  const store = new DashboardStore(buildFallbackData("test"));
+  store.selectUnit("hub-dili-set3");
+  assert.equal(selectHub(store.getSnapshot()).id, "hub-dili");
+  assert.equal(setsOf(store.getSnapshot()).length, 5);
+  store.selectHub("suku-aileu");
+  assert.equal(selectUnit(store.getSnapshot()).id, "suku-aileu");
+  assert.equal(setsOf(store.getSnapshot()).length, 1);
+  assert.equal(unitLabel(store.getSnapshot(), "hub-dili-set3"), "VIEM Hub · Set 3");
+});
+
+test("offline store adds a hub and extra sets, then removes them without orphaned records", async () => {
+  const store = new DashboardStore(buildFallbackData("test"));
+  assert.match((await store.createHub({ name: " ", municipality: "Dili", location: "x", site: "" }, { name: "Set 1", presetId: PRESETS[0].id, fishCount: 10, tankLiters: 500 })) ?? "", /name/i);
+  assert.equal(await store.createHub({ name: "Suku Unit 03", municipality: "Baucau", location: "School garden", site: "" }, { name: "Set 1", presetId: PRESETS[1].id, fishCount: 0, tankLiters: 1500 }), null);
+  let snap = store.getSnapshot();
+  const hub = selectHub(snap);
+  assert.equal(hub.name, "Suku Unit 03");
+  assert.equal(setsOf(snap).length, 1);
+  assert.equal(await store.createSet(hub.id, { name: "Set 2", presetId: PRESETS[2].id, fishCount: 500, tankLiters: 800 }), null);
+  snap = store.getSnapshot();
+  const [first, second] = setsOf(snap);
+  assert.equal(snap.selectedUnitId, second.id);
+  assert.equal(snap.data.thresholds.filter((t) => t.unitId === second.id).length, SENSOR_KEYS.length);
+  assert.equal(snap.data.actuators.filter((a) => a.unitId === second.id).length, 4);
+  assert.equal(snap.data.thresholds.find((t) => t.unitId === first.id && t.sensor === "ph")?.min, PRESETS[1].values.ph.min);
+  assert.ok(snap.live[second.id]);
+  assert.match((await store.deleteHub("nope")) ?? "", /not found/);
+  assert.equal(await store.deleteSet(second.id), null);
+  assert.match((await store.deleteSet(first.id)) ?? "", /at least one set/);
+  assert.equal(await store.deleteHub(hub.id), null);
+  snap = store.getSnapshot();
+  assert.equal(snap.data.hubs.some((h) => h.id === hub.id), false);
+  assert.equal(snap.data.units.some((u) => u.hubId === hub.id), false);
+  assert.equal(snap.data.thresholds.some((t) => t.unitId === first.id || t.unitId === second.id), false);
+  assert.equal(snap.live[first.id], undefined);
+  assert.ok(snap.data.hubs.some((h) => h.id === snap.selectedHubId));
+});
+
+test("a healthy set stays in range for every growing profile", () => {
+  const d = buildFallbackData("test");
+  for (const u of d.units.filter((x) => x.hubId === "hub-dili")) {
+    const p = profileFor(u.id, PRESETS.find((x) => x.id === u.presetId));
+    const t = d.thresholds.filter((x) => x.unitId === u.id);
+    const within = (key: string, v: number) => { const l = t.find((x) => x.sensor === key)!; return v >= l.min && v <= l.max; };
+    assert.ok(within("ph", p.ph) && within("ec", p.ec) && within("airTemp", p.airBase) && within("humidity", p.humBase) && within("waterLevel", p.level), u.id);
+  }
+});
+
+test("finance summary counts paid income and expenses over the last 30 days only", () => {
+  const d = buildFallbackData("test");
+  const ids = d.units.filter((u) => u.hubId === "hub-dili").map((u) => u.id);
+  const today = "2026-10-15";
+  d.harvests = [{ id: 1, unitId: ids[0], crop: "lettuce", category: "greens", weightKg: 10, pricePerKg: 3, buyer: "Hotel", status: "paid", harvestedAt: "2026-10-10", paidAt: "2026-10-12" }, { id: 2, unitId: ids[0], crop: "lettuce", category: "greens", weightKg: 4, pricePerKg: 3, buyer: "Hotel", status: "collected", harvestedAt: "2026-10-12", paidAt: null }, { id: 3, unitId: ids[1], crop: "basil", category: "herbs", weightKg: 1, pricePerKg: 6, buyer: "Hotel", status: "paid", harvestedAt: "2026-08-01", paidAt: "2026-08-05" }];
+  d.ledger = [{ id: 1, unitId: ids[0], type: "expense", category: "Fish feed", amountCents: 1000, date: "2026-10-01", description: "", counterparty: "", reference: "" }, { id: 2, unitId: ids[1], type: "expense", category: "Nutrients", amountCents: 500, date: "2026-07-01", description: "", counterparty: "", reference: "" }];
+  const f = financeSummary(d, ids, today);
+  assert.equal(f.income, 30);
+  assert.equal(f.expense, 10);
+  assert.equal(f.profit, 20);
+  assert.equal(f.outstanding, 12);
+  assert.equal(f.weekly.length, 8);
+  assert.deepEqual(f.crops, [{ crop: "lettuce", label: "Lettuce", kg: 14 }]);
 });

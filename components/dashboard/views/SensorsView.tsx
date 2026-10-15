@@ -6,7 +6,7 @@ import { Download } from "lucide-react";
 import { useState } from "react";
 import { SENSOR_KEYS, SENSORS, SENSOR_CATEGORIES, SENSOR_GUIDE, formatSensor, tdsFromEc } from "@/lib/domain";
 import { TICK_MS } from "@/lib/sim/engine";
-import { selectThresholds, selectUnit } from "@/lib/sim/store";
+import { selectThresholds, selectUnit, unitLabel } from "@/lib/sim/store";
 import { cn, fmtTimeSec } from "@/lib/utils";
 import { useSnapshot } from "../DashboardProvider";
 import { SENSOR_ICON } from "../icons";
@@ -134,7 +134,7 @@ export function SensorsView() {
         <div className="xl:col-span-2"><Disclosure title={tr("Detailed readings table")}><Card title={tr("Latest readings")} description={tr("The last ten readings as a table.")} bodyClassName="p-0">
           <div className="overflow-x-auto">
             <table className="w-full min-w-[36rem] text-left text-xs">
-              <caption className="sr-only">{tr("Latest ten sensor readings for")}{" "}{unit.name}</caption>
+              <caption className="sr-only">{tr("Latest ten sensor readings for")}{" "}{unitLabel(snap, unit.id)}</caption>
               <thead className="bg-forest-50 text-forest-700">
                 <tr>
                   <th scope="col" className="px-3 py-2 font-semibold">

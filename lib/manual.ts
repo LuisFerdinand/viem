@@ -125,7 +125,7 @@ export const MANUAL: ManualEntry[] = [
   },
 ];
 
-const BLOCKED = ["chemical", "pesticide", "medicine", "antibiotic", "drug", "kimiku", "pestisida", "ai-moruk", "aimoruk", "poison", "kimia", "pestisida", "obat", "antibiotik", "racun"];
+const BLOCKED = ["chemical", "pesticide", "medicine", "antibiotic", "drug", "kimiku", "pestisida", "ai-moruk", "aimoruk", "poison", "kimia", "pestisida", "obat", "antibiotik", "racun", "químic", "quimic", "pesticida", "medicamento", "remédio", "remedio", "antibiótico", "antibiotico", "veneno"];
 const INDONESIAN_KEYWORDS: Record<string, string[]> = {
   "yellow-leaves": ["kuning", "daun", "pucat", "nutrisi"],
   "fish-gasping": ["megap", "permukaan", "oksigen", "napas", "nafas"],
@@ -136,6 +136,18 @@ const INDONESIAN_KEYWORDS: Record<string, string[]> = {
   "pump-stopped": ["pompa", "berhenti", "rusak", "listrik", "mati"],
   "low-ph": ["asam", "ph", "keasaman"],
   bsf: ["larva", "maggot", "sampah", "kompos"],
+};
+
+const PORTUGUESE_KEYWORDS: Record<string, string[]> = {
+  "yellow-leaves": ["amarel", "folha", "pálid", "palid", "nutrient"],
+  "fish-gasping": ["ofeg", "superfície", "superficie", "oxigénio", "oxigenio", "oxigênio", "respir"],
+  "green-water": ["verde", "alga", "turva", "lodo"],
+  "bad-smell": ["cheiro", "amónia", "amonia", "amônia", "podre"],
+  feeding: ["alimenta", "comida", "ração", "racao", "quantas vezes"],
+  "harvest-lettuce": ["colh", "alface", "pronto"],
+  "pump-stopped": ["bomba", "parou", "avaria", "eletricidade", "electricidade", "energia"],
+  "low-ph": ["ácid", "acid", "ph"],
+  bsf: ["larva", "mosca", "lixo", "restos", "compost"],
 };
 
 export type ManualAnswer =
@@ -149,7 +161,7 @@ export function answerFromManual(question: string): ManualAnswer {
   let best: ManualEntry | null = null;
   let bestScore = 0;
   for (const entry of MANUAL) {
-    const score = [...entry.keywords, ...(INDONESIAN_KEYWORDS[entry.id] ?? [])].reduce((s, k) => (new RegExp(`(^|[^a-zà-ú'])${k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i").test(text) ? s + 1 : s), 0);
+    const score = [...entry.keywords, ...(INDONESIAN_KEYWORDS[entry.id] ?? []), ...(PORTUGUESE_KEYWORDS[entry.id] ?? [])].reduce((s, k) => (new RegExp(`(^|[^a-zà-ú'])${k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`, "i").test(text) ? s + 1 : s), 0);
     if (score > bestScore) {
       best = entry;
       bestScore = score;

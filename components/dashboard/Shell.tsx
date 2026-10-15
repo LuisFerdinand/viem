@@ -1,12 +1,13 @@
 "use client";
 
-import { Activity, ArrowLeft, Bell, BookOpen, Bot, ChevronDown, CircleAlert, CircleCheck, Info, LayoutDashboard, Library, LineChart, Menu, OctagonAlert, PanelLeftClose, PanelLeftOpen, SlidersHorizontal, Sprout, TriangleAlert, Workflow, X, type LucideIcon } from "lucide-react";
+import { Activity, ArrowLeft, Bell, BookOpen, Bot, ChevronDown, CircleAlert, CircleCheck, Info, LayoutDashboard, MessageCircle, Library, LineChart, Menu, Network, OctagonAlert, PanelLeftClose, PanelLeftOpen, SlidersHorizontal, Sprout, TriangleAlert, Workflow, X, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Logo, LogoMark } from "@/components/ui/Logo";
+import { findPreset } from "@/lib/hubs";
 import { LANGUAGES, type Language } from "@/lib/i18n";
-import { unacknowledged, type ToastTone } from "@/lib/sim/store";
+import { selectHub, setsOf, unacknowledged, type ToastTone } from "@/lib/sim/store";
 import { cn } from "@/lib/utils";
 import { useSnapshot, useStore } from "./DashboardProvider";
 import { FeedIndicator } from "./FeedIndicator";
@@ -19,6 +20,7 @@ import { useBrowserPreference } from "./useBrowserPreference";
 export const NAV_GROUPS: { label: string; items: { href: string; label: string; description: string; icon: LucideIcon }[] }[] = [
   { label: "My farm", items: [
     { href: "/dashboard", label: "Overview", description: "See how your farm is doing", icon: LayoutDashboard },
+    { href: "/dashboard/hubs", label: "Hubs & sets", description: "Add hubs and manage their sets", icon: Network },
     { href: "/dashboard/alerts", label: "Alerts", description: "Check problems and confirm your response", icon: Bell },
     { href: "/dashboard/sensors", label: "Water & climate", description: "Understand your sensor readings", icon: LineChart },
     { href: "/dashboard/controls", label: "Equipment", description: "Turn pumps and watering on or off", icon: SlidersHorizontal },
@@ -69,13 +71,38 @@ function Sidebar({ collapsed = false, onToggle, onNavigate, onClose }: { collaps
   </div>;
 }
 
-function UnitSwitcher() {
+function HubSwitcher() {
   const { tr } = useLanguage();
   const store = useStore();
   const snap = useSnapshot();
-  return <label className="relative inline-flex max-w-full min-w-0 items-center"><span className="sr-only">{tr("Selected farm")}</span><select value={snap.selectedUnitId} onChange={(e) => store.selectUnit(e.target.value)} className="h-11 max-w-full min-w-0 appearance-none truncate rounded-xl border border-forest-200 bg-white pr-8 pl-3 text-sm font-semibold text-forest-900">
-    {snap.data.units.map((u) => <option key={u.id} value={u.id}>{u.name} · {u.municipality}</option>)}
+  return <label className="relative inline-flex max-w-full min-w-0 items-center"><span className="sr-only">{tr("Selected hub")}</span><select value={snap.selectedHubId} onChange={(e) => store.selectHub(e.target.value)} className="h-11 max-w-full min-w-0 appearance-none truncate rounded-xl border border-forest-200 bg-white pr-8 pl-3 text-sm font-semibold text-forest-900">
+    {snap.data.hubs.map((h) => <option key={h.id} value={h.id}>{h.name} · {h.municipality}</option>)}
   </select><ChevronDown className="pointer-events-none absolute right-2.5 size-4 text-forest-500" /></label>;
+}
+
+/** The sets of the selected hub. The chosen set is what every page below shows. */
+function SetTabs() {
+  const { tr } = useLanguage();
+  const store = useStore();
+  const snap = useSnapshot();
+  const hub = selectHub(snap);
+  const sets = setsOf(snap);
+  return <nav aria-label={tr("Sets in {0}", [hub?.name ?? ""])} className="flex gap-1 overflow-x-auto border-t border-forest-100/70 px-4 md:px-6">
+    {sets.map((u) => {
+      const active = u.id === snap.selectedUnitId;
+      const live = snap.live[u.id];
+      const open = unacknowledged(snap, u.id).length;
+      const preset = findPreset(snap.data.presets, u.presetId);
+      return <button key={u.id} type="button" onClick={() => store.selectUnit(u.id)} aria-current={active ? "true" : undefined} className={cn("flex min-h-12 shrink-0 flex-col items-start justify-center border-b-[3px] px-4 py-1.5 text-left transition-colors", active ? "border-leaf-500 text-forest-950" : "border-transparent text-forest-600 hover:border-forest-200 hover:text-forest-900")}>
+        <span className="flex items-center gap-2 text-sm font-semibold">
+          {u.name}
+          {live && <span aria-hidden="true" className={cn("size-2 rounded-full", live.health >= 80 ? "bg-ok-500" : live.health >= 55 ? "bg-warn-500" : "bg-crit-500")} />}
+          {open > 0 && <span className="min-w-4 rounded-full bg-crit-500 px-1 text-center text-[10px] leading-4 font-semibold text-white">{open}</span>}
+        </span>
+        <span className="max-w-40 truncate text-[11px] font-normal text-muted">{tr(preset.crop)}</span>
+      </button>;
+    })}
+  </nav>;
 }
 
 export function LanguageSwitcher() {
@@ -99,13 +126,14 @@ function Toasts() {
 export function DashboardShell({ children }: { children: ReactNode }) {
   const snap = useSnapshot();
   const pathname = usePathname();
-  const { language, tr, simple, setSimple } = useLanguage();
+  const { language, tr } = useLanguage();
   const [drawer, setDrawer] = useState(false);
   const [storedCollapsed, saveCollapsed] = useBrowserPreference("viem.sidebar-collapsed", "false");
   const collapsed = storedCollapsed === "true";
   const menuButton = useRef<HTMLButtonElement>(null);
   const dialog = useRef<HTMLDivElement>(null);
   const alertCount = unacknowledged(snap).length;
+  const onChat = pathname === "/dashboard/assistant";
   const group = NAV_GROUPS.find((g) => g.items.some((i) => i.href === pathname));
   const page = group?.items.find((i) => i.href === pathname);
   const toggleSidebar = () => saveCollapsed(String(!collapsed));
@@ -135,18 +163,21 @@ export function DashboardShell({ children }: { children: ReactNode }) {
       <header className="sticky top-0 z-30 border-b border-forest-100 bg-white/95 backdrop-blur-md">
         <div className="grid grid-cols-[2.75rem_minmax(0,1fr)] items-center gap-2 px-4 py-3 sm:flex sm:min-h-18 sm:py-0 md:gap-4 md:px-6">
           <button ref={menuButton} onClick={() => setDrawer(true)} aria-label={tr("Open menu")} aria-expanded={drawer} className="flex size-11 shrink-0 items-center justify-center rounded-xl text-forest-800 hover:bg-forest-50 lg:hidden"><Menu className="size-5" /></button>
-          <div className="min-w-0 flex-1">{snap.ready ? <UnitSwitcher /> : <Skeleton className="h-11 w-40" />}</div>
+          <div className="min-w-0 flex-1">{snap.ready ? <HubSwitcher /> : <Skeleton className="h-11 w-40" />}</div>
           <div className="hidden xl:block">{snap.ready && <FeedIndicator />}</div>
           <LanguageSwitcher />
           <Link href="/dashboard/alerts" aria-label={tr("Alerts")} className="relative hidden size-11 shrink-0 items-center justify-center rounded-xl border border-forest-100 text-forest-800 sm:flex"><Bell className="size-5" />{alertCount > 0 && <span className="absolute -top-1 -right-1 min-w-5 rounded-full bg-crit-500 px-1 text-center text-[10px] leading-5 font-semibold text-white">{alertCount}</span>}</Link>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-t border-forest-100/70 px-4 py-2 md:px-6">
           <p className="flex min-w-0 flex-wrap gap-1.5 text-xs text-muted"><span>{tr(group?.label ?? "My farm")}</span><span aria-hidden="true">/</span><span className="font-semibold text-forest-800">{tr(page?.label ?? "Overview")}</span></p>
-          <label className="flex min-h-8 items-center gap-2 text-xs text-forest-700"><input type="checkbox" checked={simple} onChange={(e) => setSimple(e.target.checked)} className="size-4 accent-forest-700" />{tr("Simple view")}</label>
+{onChat
+            ? <Link href="/dashboard" className="inline-flex min-h-9 items-center gap-1.5 rounded-full px-3 text-xs font-semibold text-forest-700 ring-1 ring-forest-200 hover:bg-forest-50"><LayoutDashboard className="size-3.5" aria-hidden="true" />{tr("Full dashboard")}</Link>
+            : <Link href="/dashboard/assistant" className="inline-flex min-h-9 items-center gap-1.5 rounded-full bg-forest-800 px-3.5 text-xs font-semibold text-white hover:bg-forest-700"><MessageCircle className="size-3.5" aria-hidden="true" />{tr("Simple chat")}{alertCount > 0 && <span className="min-w-4 rounded-full bg-crit-500 px-1 text-center text-[10px] leading-4">{alertCount}</span>}</Link>}
         </div>
+        {snap.ready && pathname !== "/dashboard/hubs" && !onChat && <SetTabs />}
         {snap.data.source === "fallback" && <p className="border-t border-warn-500/20 bg-warn-50 px-4 py-2 text-xs text-warn-700 md:px-6">{tr("Offline demo. Farm records are saved on this device; equipment changes last for this session.")}</p>}
       </header>
-      <main id="main" tabIndex={-1} className="mx-auto max-w-[96rem] px-4 py-6 outline-none md:px-6 md:py-8">{snap.ready ? <><PageGuide /><div className="mt-6">{children}</div></> : <DashboardSkeleton />}</main>
+      <main id="main" tabIndex={-1} className={cn("mx-auto max-w-[96rem] outline-none", onChat ? "px-0 py-0 sm:px-6 sm:py-6" : "px-4 py-6 md:px-6 md:py-8")}>{snap.ready ? (onChat ? children : <><PageGuide /><div className="mt-6">{children}</div></>) : <DashboardSkeleton />}</main>
     </div>
     <Toasts />
   </div>;

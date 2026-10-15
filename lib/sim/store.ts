@@ -21,6 +21,10 @@ import {
   deleteAutomationPreset,
   saveLedgerEntry,
   deleteLedgerEntry,
+  createHub,
+  createSet,
+  deleteHub,
+  deleteSet,
 } from "../actions";
 
 const api = {
@@ -46,6 +50,10 @@ const api = {
   deleteAutomationPreset,
   saveLedgerEntry,
   deleteLedgerEntry,
+  createHub,
+  createSet,
+  deleteHub,
+  deleteSet,
 };
 import {
   ACTUATOR_KINDS,
@@ -67,7 +75,9 @@ import {
   type ThresholdValues,
   type Preset,
 } from "../domain";
-import { buildFallbackData } from "../seed-data";
+import { buildFallbackData, SEED_HUBS, SEED_UNITS } from "../seed-data";
+import type { BotDraft, ChatChannel, ChatMessage } from "../chat/types";
+import { MAX_HUBS, MAX_SETS_PER_HUB, buildSetDefaults, findPreset, newEntityId } from "../hubs";
 import type {
   ActionResult,
   ActuatorDTO,
@@ -75,10 +85,13 @@ import type {
   DashboardData,
   EventDTO,
   HarvestDTO,
+  HubDTO,
   RuleDTO,
+  ThresholdDTO,
+  UnitDTO,
   LedgerDTO,
 } from "../types";
-import { ledgerSchema, presetSchema } from "../dashboard-validation";
+import { hubInputSchema, ledgerSchema, presetSchema, setInputSchema, type HubInput, type SetInput } from "../dashboard-validation";
 import { todayInDili } from "../utils";
 import {
   BYTES_PER_READING,
@@ -107,6 +120,7 @@ import {
 export const IDLE_MS = 3 * 60_000;
 const MAX_EVENTS_IN_MEMORY = 250;
 const MAX_TOASTS = 4;
+const MAX_CHAT_MESSAGES = 200;
 
 export type FeedStatus = "starting" | "live" | "idle" | "hidden" | "paused";
 
@@ -135,6 +149,9 @@ export interface Toast {
 export interface Snapshot {
   ready: boolean;
   data: DashboardData;
+  /** The hub chosen in the header. */
+  selectedHubId: string;
+  /** The set (inside the selected hub) whose readings and controls every page shows. */
   selectedUnitId: string;
   live: Record<string, UnitLive>;
   feed: {
@@ -147,11 +164,20 @@ export interface Snapshot {
   operator: string;
   pending: Record<string, boolean>;
   hasMoreEvents: boolean;
+  /** Tulun VIEM conversations. They live in memory only, so they survive moving between pages. */
+  chat: Record<ChatChannel, ChatMessage[]>;
 }
 
 type AlarmState = { status: SensorStatus; alertId: number | null };
 
+/** Everything that makes up one newly created set. */
+interface NewSet { unit: UnitDTO; thresholds: ThresholdDTO[]; actuators: ActuatorDTO[]; rules: RuleDTO[] }
+
+const LS_HUB = "viem.hub";
 const LS_UNIT = "viem.unit";
+const LS_RECORDS = "viem.farm-records.v1";
+const lsSetKey = (hubId: string) => `viem.set.${hubId}`;
+const SEED_IDS = new Set<string>([...SEED_HUBS.map((h) => h.id), ...SEED_UNITS.map((u) => u.id)]);
 const LS_OPERATOR = "viem.operator";
 
 function readLS(key: string) {
@@ -192,6 +218,7 @@ export class DashboardStore {
     this.snap = {
       ready: false,
       data: initial,
+      selectedHubId: initial.units[0]?.hubId ?? initial.hubs[0]?.id ?? "",
       selectedUnitId: initial.units[0]?.id ?? "",
       live: {},
       feed: { status: "starting", nextTickAt: null, lastTickAt: null, readings: 0 },
@@ -199,6 +226,7 @@ export class DashboardStore {
       operator: "Operator",
       pending: {},
       hasMoreEvents: initial.events.length >= 60,
+      chat: { farm: [], money: [], ask: [] },
     };
     this.serverSnap = this.snap;
   }
@@ -220,7 +248,19 @@ export class DashboardStore {
   }
   private setData(fn: (d: DashboardData) => Partial<DashboardData>) {
     this.set({ data: { ...this.snap.data, ...fn(this.snap.data) } });
-    if (this.started && !this.canPersist) writeLS("viem.farm-records.v1", JSON.stringify({ ledger: this.snap.data.ledger, presets: this.snap.data.presets, harvests: this.snap.data.harvests }));
+    if (this.started && !this.canPersist) this.saveLocalRecords();
+  }
+  /** Without a database, what a person records (and the hubs and sets they add) stays in this browser. */
+  private saveLocalRecords() {
+    const d = this.snap.data;
+    const custom = (unitId: string) => !SEED_IDS.has(unitId);
+    writeLS(LS_RECORDS, JSON.stringify({
+      ledger: d.ledger, presets: d.presets, harvests: d.harvests,
+      custom: {
+        hubs: d.hubs.filter((h) => !SEED_IDS.has(h.id)), units: d.units.filter((u) => custom(u.id)),
+        thresholds: d.thresholds.filter((t) => custom(t.unitId)), actuators: d.actuators.filter((a) => custom(a.unitId)), rules: d.rules.filter((r) => custom(r.unitId)),
+      },
+    }));
   }
   private get canPersist() {
     return this.snap.data.source === "database";
@@ -232,23 +272,35 @@ export class DashboardStore {
     if (this.started) return;
     this.started = true;
 
+    const savedHub = readLS(LS_HUB);
     const savedUnit = readLS(LS_UNIT);
     const savedOperator = readLS(LS_OPERATOR);
     if (!this.canPersist) {
       try {
-        const saved = JSON.parse(readLS("viem.farm-records.v1") ?? "null");
+        const saved = JSON.parse(readLS(LS_RECORDS) ?? "null");
         if (saved) {
-          const ledger = (saved.ledger as LedgerDTO[]).map((r) => ({ ...ledgerSchema.parse(r), id: r.id }));
+          const base = this.snap.data;
+          const c = saved.custom ?? {};
+          const text = (v: unknown) => typeof v === "string" && v.length > 0;
+          // start() can run twice (React strict mode), so only add what is not already loaded.
+          const hubs = (Array.isArray(c.hubs) ? (c.hubs as HubDTO[]) : []).filter((h) => text(h.id) && !SEED_IDS.has(h.id) && !base.hubs.some((b) => b.id === h.id) && hubInputSchema.safeParse(h).success);
+          const allHubIds = new Set([...base.hubs, ...hubs].map((h) => h.id));
+          const units = (Array.isArray(c.units) ? (c.units as UnitDTO[]) : []).filter((u) => text(u.id) && !SEED_IDS.has(u.id) && !base.units.some((b) => b.id === u.id) && allHubIds.has(u.hubId) && setInputSchema.safeParse({ name: u.name, presetId: u.presetId, fishCount: u.fishCount, tankLiters: u.tankLiters }).success);
+          const mine = <T extends { unitId: string }>(rows: unknown): T[] => (Array.isArray(rows) ? (rows as T[]) : []).filter((r) => units.some((u) => u.id === r.unitId));
+          const all = { hubs: [...base.hubs, ...hubs], units: [...base.units, ...units] };
+          const ledger = (saved.ledger as LedgerDTO[]).filter((r) => all.units.some((u) => u.id === r.unitId)).map((r) => ({ ...ledgerSchema.parse(r), id: r.id }));
           const presets = (saved.presets as Preset[]).map((p) => presetSchema.parse(p));
-          const harvests = (saved.harvests as HarvestDTO[]).filter((h) => Number.isInteger(h.id) && this.snap.data.units.some((u) => u.id === h.unitId) && Number.isFinite(h.weightKg) && Number.isFinite(h.pricePerKg) && ["logged", "collected", "paid"].includes(h.status));
-          this.set({ data: { ...this.snap.data, ledger, presets, harvests } });
-          this.tempId = Math.min(-1, ...ledger.map((r) => r.id - 1), ...harvests.map((h) => h.id - 1));
+          const harvests = (saved.harvests as HarvestDTO[]).filter((h) => Number.isInteger(h.id) && all.units.some((u) => u.id === h.unitId) && Number.isFinite(h.weightKg) && Number.isFinite(h.pricePerKg) && ["logged", "collected", "paid"].includes(h.status));
+          const thresholds = mine<ThresholdDTO>(c.thresholds), actuators = mine<ActuatorDTO>(c.actuators), rules = mine<RuleDTO>(c.rules);
+          this.set({ data: { ...base, ...all, thresholds: [...base.thresholds, ...thresholds], actuators: [...base.actuators, ...actuators], rules: [...base.rules, ...rules], ledger, presets, harvests } });
+          this.tempId = Math.min(-1, ...ledger.map((r) => r.id - 1), ...harvests.map((h) => h.id - 1), ...[...thresholds, ...actuators, ...rules].map((r) => r.id - 1));
         }
       } catch { /* Ignore damaged or outdated browser records. */ }
     }
-    const units = this.snap.data.units;
     const patch: Partial<Snapshot> = { ready: true };
-    if (savedUnit && units.some((u) => u.id === savedUnit)) patch.selectedUnitId = savedUnit;
+    const choice = this.choose(savedUnit, savedHub);
+    patch.selectedHubId = choice.hubId;
+    patch.selectedUnitId = choice.unitId;
     if (savedOperator) patch.operator = savedOperator.slice(0, 60);
     if (Object.keys(this.snap.live).length === 0) {
       this.syncAlarmsFromData();
@@ -351,11 +403,20 @@ export class DashboardStore {
     };
   }
 
+  private profile(unit: UnitDTO, data = this.snap.data) {
+    return profileFor(unit.id, findPreset(data.presets, unit.presetId));
+  }
+
   /** Two hours of history, as if synced from the controller's local buffer. */
   private backfill(now: number): Record<string, UnitLive> {
     const live: Record<string, UnitLive> = {};
-    for (const unit of this.snap.data.units) {
-      const p = profileFor(unit.id);
+    for (const unit of this.snap.data.units) live[unit.id] = this.backfillUnit(unit, now);
+    return live;
+  }
+
+  private backfillUnit(unit: UnitDTO, now: number): UnitLive {
+    {
+      const p = this.profile(unit);
       const ctx = this.unitContext(unit.id);
       let t = now - HISTORY_POINTS * TICK_MS;
       let reading = initialReading(p, t);
@@ -370,7 +431,7 @@ export class DashboardStore {
       const finalEff = eff ?? computeActuators({ t, reading, ...ctx, previous: null });
       const statuses = sensorStatuses(reading, ctx.thresholds);
       const fault = pumpFaultDetected(reading, finalEff);
-      live[unit.id] = {
+      return {
         history,
         latest: reading,
         actuators: finalEff,
@@ -384,7 +445,6 @@ export class DashboardStore {
         scenarios: { ...NO_SCENARIOS },
       };
     }
-    return live;
   }
 
   private tick() {
@@ -411,7 +471,7 @@ export class DashboardStore {
         }
       }
 
-      const next = stepReading(u.latest, now, toStates(eff), u.scenarios, profileFor(unit.id), Math.random);
+      const next = stepReading(u.latest, now, toStates(eff), u.scenarios, this.profile(unit), Math.random);
       const statuses = sensorStatuses(next, ctx.thresholds);
       const fault = pumpFaultDetected(next, eff);
 
@@ -595,7 +655,7 @@ export class DashboardStore {
     }
     this.alarms.set(key, { status: severity, alertId: localId });
 
-    const unitName = this.snap.data.units.find((u) => u.id === unitId)?.name ?? unitId;
+    const unitName = unitLabel(this.snap, unitId);
     this.toast(severity, `${unitName} · ${ALERT_LABEL[code]} ${severity === "critical" ? "critical" : "out of range"}`, copy.tet);
 
     if (!this.canPersist) return;
@@ -727,16 +787,176 @@ export class DashboardStore {
 
   /* ---------------- preferences ---------------- */
 
+  /** Resolve a remembered set / hub into a valid pair that still exists. */
+  private choose(unitId: string | null, hubId: string | null, data = this.snap.data) {
+    const unit = data.units.find((u) => u.id === unitId);
+    const hub = data.hubs.find((h) => h.id === (unit?.hubId ?? hubId)) ?? data.hubs[0];
+    const remembered = hub ? data.units.find((u) => u.id === readLS(lsSetKey(hub.id)) && u.hubId === hub.id) : undefined;
+    const set = unit ?? remembered ?? data.units.find((u) => u.hubId === hub?.id) ?? data.units[0];
+    return { hubId: hub?.id ?? "", unitId: set?.id ?? "" };
+  }
+
+  /** Switch to a set; the hub follows because every set belongs to exactly one hub. */
   selectUnit(id: string) {
-    if (!this.snap.data.units.some((u) => u.id === id)) return;
+    const unit = this.snap.data.units.find((u) => u.id === id);
+    if (!unit) return;
+    writeLS(LS_HUB, unit.hubId);
     writeLS(LS_UNIT, id);
-    this.set({ selectedUnitId: id });
+    writeLS(lsSetKey(unit.hubId), id);
+    this.set({ selectedHubId: unit.hubId, selectedUnitId: id });
+  }
+
+  /** Switch hub, landing on the set last used there. */
+  selectHub(id: string) {
+    if (!this.snap.data.hubs.some((h) => h.id === id)) return;
+    this.selectUnit(this.choose(null, id).unitId);
   }
 
   setOperator(name: string) {
     const clean = name.trim().slice(0, 60) || "Operator";
     writeLS(LS_OPERATOR, clean);
     this.set({ operator: clean });
+  }
+
+  /* ---------------- Tulun VIEM chat ---------------- */
+
+  /** Append a message to a chat. Returns its id so a card can be updated later. */
+  chatAdd(channel: ChatChannel, message: (BotDraft & { from?: "user" | "bot" }) | ChatMessage) {
+    const id = this.tempId--;
+    const full: ChatMessage = { from: "bot", ...message, id, t: Date.now() };
+    this.set({ chat: { ...this.snap.chat, [channel]: [...this.snap.chat[channel], full].slice(-MAX_CHAT_MESSAGES) } });
+    return id;
+  }
+
+  chatPatch(channel: ChatChannel, id: number, patch: (m: ChatMessage) => ChatMessage) {
+    this.set({ chat: { ...this.snap.chat, [channel]: this.snap.chat[channel].map((m) => (m.id === id ? patch(m) : m)) } });
+  }
+
+  /* ---------------- hubs & sets ---------------- */
+
+  /** Offline equivalent of the server action: same defaults, temporary ids. */
+  private buildLocalSet(hubId: string, input: SetInput, by: string): NewSet {
+    const preset = findPreset(this.snap.data.presets, input.presetId);
+    const id = newEntityId(`${hubId}-${input.name}`);
+    const defaults = buildSetDefaults(id, preset, by);
+    const withId = <T,>(rows: T[]) => rows.map((r) => ({ ...r, id: this.tempId-- }));
+    return {
+      unit: { id, hubId, name: input.name, presetId: preset.id, crops: preset.crop, fishCount: input.fishCount, tankLiters: input.tankLiters, operatorTeam: 3 },
+      thresholds: withId(defaults.thresholds), actuators: withId(defaults.actuators), rules: withId(defaults.rules),
+    };
+  }
+
+  /** Add a set to the local data, start its simulation and switch to it. */
+  private adoptSet(created: NewSet, hub?: HubDTO) {
+    this.setData((d) => ({
+      hubs: hub ? [...d.hubs, hub] : d.hubs,
+      units: [...d.units, created.unit],
+      thresholds: [...d.thresholds, ...created.thresholds],
+      actuators: [...d.actuators, ...created.actuators],
+      rules: [...d.rules, ...created.rules],
+    }));
+    this.set({ live: { ...this.snap.live, [created.unit.id]: this.backfillUnit(created.unit, Date.now()) } });
+    this.selectUnit(created.unit.id);
+  }
+
+  /** Remove sets (and everything recorded for them) from the local data. */
+  private dropUnits(unitIds: string[], hubId?: string) {
+    const gone = new Set(unitIds);
+    this.setData((d) => ({
+      hubs: hubId ? d.hubs.filter((h) => h.id !== hubId) : d.hubs,
+      units: d.units.filter((u) => !gone.has(u.id)),
+      thresholds: d.thresholds.filter((t) => !gone.has(t.unitId)),
+      actuators: d.actuators.filter((a) => !gone.has(a.unitId)),
+      rules: d.rules.filter((r) => !gone.has(r.unitId)),
+      alerts: d.alerts.filter((a) => !gone.has(a.unitId)),
+      harvests: d.harvests.filter((h) => !gone.has(h.unitId)),
+      ledger: d.ledger.filter((r) => !gone.has(r.unitId)),
+      events: d.events.filter((e) => !e.unitId || !gone.has(e.unitId)),
+    }));
+    const live = { ...this.snap.live };
+    for (const id of gone) delete live[id];
+    for (const key of [...this.alarms.keys()]) if (gone.has(key.split(":")[0])) this.alarms.delete(key);
+    for (const key of [...this.streaks.keys()]) if (gone.has(key.split(":")[0])) this.streaks.delete(key);
+    const choice = this.choose(gone.has(this.snap.selectedUnitId) ? null : this.snap.selectedUnitId, this.snap.selectedHubId);
+    this.set({ live, selectedHubId: choice.hubId, selectedUnitId: choice.unitId });
+    writeLS(LS_HUB, choice.hubId);
+    writeLS(LS_UNIT, choice.unitId);
+  }
+
+  /** Create a hub with its first set. Returns an error message, or null on success. */
+  async createHub(hubInput: HubInput, setInput: SetInput) {
+    const hub = hubInputSchema.safeParse(hubInput);
+    if (!hub.success) return hub.error.issues[0]?.message ?? "Check the hub details.";
+    const set = setInputSchema.safeParse(setInput);
+    if (!set.success) return set.error.issues[0]?.message ?? "Check the set details.";
+    if (this.snap.data.hubs.length >= MAX_HUBS) return `This demo is limited to ${MAX_HUBS} hubs. Remove one before adding another.`;
+    const by = this.snap.operator;
+    const res = await this.call("hub:new", () => api.createHub({ hub: hub.data, set: set.data, actor: by }));
+    if (res.ok) {
+      this.adoptSet(res.data.created, res.data.hub);
+      this.pushEvent(res.data.event);
+    } else if (res.error === "offline") {
+      const row: HubDTO = { id: newEntityId(hub.data.name), kind: "hub", installedAt: todayInDili(), ...hub.data, site: hub.data.site || "Farm site" };
+      const created = this.buildLocalSet(row.id, set.data, by);
+      this.adoptSet(created, row);
+      this.localEvent(created.unit.id, "config", `Hub added: ${row.name} (${row.municipality}) with ${set.data.name}`, by);
+    } else {
+      return res.error;
+    }
+    this.toast("success", "Hub added", hub.data.name);
+    return null;
+  }
+
+  /** Add a set to an existing hub. Returns an error message, or null on success. */
+  async createSet(hubId: string, setInput: SetInput) {
+    const hub = this.snap.data.hubs.find((h) => h.id === hubId);
+    if (!hub) return "Hub not found";
+    const set = setInputSchema.safeParse(setInput);
+    if (!set.success) return set.error.issues[0]?.message ?? "Check the set details.";
+    if (this.snap.data.units.filter((u) => u.hubId === hubId).length >= MAX_SETS_PER_HUB) return `A hub can have at most ${MAX_SETS_PER_HUB} sets in this demo.`;
+    const by = this.snap.operator;
+    const res = await this.call("set:new", () => api.createSet({ hubId, set: set.data, actor: by }));
+    if (res.ok) {
+      this.adoptSet(res.data.created);
+      this.pushEvent(res.data.event);
+    } else if (res.error === "offline") {
+      const created = this.buildLocalSet(hubId, set.data, by);
+      this.adoptSet(created);
+      this.localEvent(created.unit.id, "config", `Set added to ${hub.name}: ${set.data.name} (${findPreset(this.snap.data.presets, set.data.presetId).label})`, by);
+    } else {
+      return res.error;
+    }
+    this.toast("success", "Set added", `${hub.name} · ${set.data.name}`);
+    return null;
+  }
+
+  async deleteSet(unitId: string) {
+    const unit = this.snap.data.units.find((u) => u.id === unitId);
+    if (!unit) return "Set not found";
+    if (this.snap.data.units.filter((u) => u.hubId === unit.hubId).length <= 1) return "A hub needs at least one set. Remove the whole hub instead.";
+    const label = unitLabel(this.snap, unitId);
+    const by = this.snap.operator;
+    const res = await this.call(`set:${unitId}`, () => api.deleteSet({ unitId, actor: by }));
+    if (!res.ok && res.error !== "offline") return res.error;
+    this.dropUnits([unitId]);
+    if (res.ok) this.pushEvent(res.data.event);
+    else this.localEvent(null, "config", `Set removed: ${label}`, by);
+    this.toast("success", "Set removed", label);
+    return null;
+  }
+
+  async deleteHub(hubId: string) {
+    const hub = this.snap.data.hubs.find((h) => h.id === hubId);
+    if (!hub) return "Hub not found";
+    if (this.snap.data.hubs.length <= 1) return "Keep at least one hub in the dashboard.";
+    const by = this.snap.operator;
+    const res = await this.call(`hub:${hubId}`, () => api.deleteHub({ hubId, actor: by }));
+    if (!res.ok && res.error !== "offline") return res.error;
+    this.dropUnits(this.snap.data.units.filter((u) => u.hubId === hubId).map((u) => u.id), hubId);
+    if (res.ok) this.pushEvent(res.data.event);
+    else this.localEvent(null, "config", `Hub removed: ${hub.name}`, by);
+    this.toast("success", "Hub removed", hub.name);
+    return null;
   }
 
   /* ---------------- controls ---------------- */
@@ -838,8 +1058,9 @@ export class DashboardStore {
     const preset = this.snap.data.presets.find((p) => p.id === presetId);
     if (!preset) return;
     const by = this.snap.operator;
-    const before = { thresholds: this.snap.data.thresholds, rules: this.snap.data.rules, actuators: this.snap.data.actuators };
+    const before = { thresholds: this.snap.data.thresholds, rules: this.snap.data.rules, actuators: this.snap.data.actuators, units: this.snap.data.units };
     this.setData((d) => ({
+      units: d.units.map((u) => (u.id === unitId ? { ...u, presetId } : u)),
       thresholds: d.thresholds.map((t) => (t.unitId === unitId ? { ...t, ...preset.values[t.sensor], alarmEnabled: true } : t)),
       ...(includeRules ? { rules: [...d.rules.filter((r) => r.unitId !== unitId), ...preset.rules.map((r) => ({ ...r, unitId, id: this.tempId-- }))], actuators: d.actuators.map((a) => a.unitId === unitId && preset.rules.some((r) => r.enabled && r.actuator === a.kind) ? { ...a, mode: "auto" as const } : a) } : {}),
     }));
@@ -1053,11 +1274,16 @@ export class DashboardStore {
       : ({ ok: true, data: buildFallbackData(this.snap.data.sourceNote ?? "Offline demo") } as const);
     if (!res.ok) return;
     const data = res.data;
-    this.set({ data, hasMoreEvents: data.events.length >= 60 });
-    if (!this.canPersist) writeLS("viem.farm-records.v1", JSON.stringify({ ledger: data.ledger, presets: data.presets, harvests: data.harvests }));
+    const choice = this.choose(this.snap.selectedUnitId, this.snap.selectedHubId, data);
+    this.set({ data, hasMoreEvents: data.events.length >= 60, selectedHubId: choice.hubId, selectedUnitId: choice.unitId });
+    if (!this.canPersist) this.saveLocalRecords();
     this.syncAlarmsFromData();
-    const live = { ...this.snap.live };
-    for (const id of Object.keys(live)) live[id] = { ...live[id], scenarios: { ...NO_SCENARIOS }, runtimeMs: zeroRuntime() };
+    const now = Date.now();
+    const live: Record<string, UnitLive> = {};
+    for (const unit of data.units) {
+      const kept = this.snap.live[unit.id];
+      live[unit.id] = kept ? { ...kept, scenarios: { ...NO_SCENARIOS }, runtimeMs: zeroRuntime() } : this.backfillUnit(unit, now);
+    }
     this.set({ live });
     for (const id of Object.keys(live)) this.recomputeUnit(id);
     this.toast("success", "Demo data reset", "Controls, rules, alarms and harvests are back to their starting values.");
@@ -1068,6 +1294,23 @@ export class DashboardStore {
 
 export function selectUnit(s: Snapshot, unitId = s.selectedUnitId) {
   return s.data.units.find((u) => u.id === unitId) ?? s.data.units[0];
+}
+
+export function selectHub(s: Snapshot, hubId = s.selectedHubId) {
+  return s.data.hubs.find((h) => h.id === hubId) ?? s.data.hubs[0];
+}
+
+/** The sets of one hub, in display order. */
+export function setsOf(s: Snapshot, hubId = s.selectedHubId) {
+  return s.data.units.filter((u) => u.hubId === hubId);
+}
+
+/** "VIEM Hub · Set 2" — a set name only makes sense next to its hub. */
+export function unitLabel(s: Snapshot, unitId: string) {
+  const unit = s.data.units.find((u) => u.id === unitId);
+  if (!unit) return unitId;
+  const hub = s.data.hubs.find((h) => h.id === unit.hubId);
+  return hub ? `${hub.name} · ${unit.name}` : unit.name;
 }
 
 export function selectThresholds(s: Snapshot, unitId = s.selectedUnitId) {
