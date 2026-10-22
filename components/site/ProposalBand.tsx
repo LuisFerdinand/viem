@@ -1,9 +1,9 @@
-import { ArrowRight, Download, FileText } from "lucide-react";
+import { ArrowRight, BookOpen, FileText } from "lucide-react";
 import Link from "next/link";
-import { ButtonAnchor } from "@/components/ui/Button";
+import { ViewPdfButton } from "@/components/site/PdfViewer";
 import { LogoMark } from "@/components/ui/Logo";
 import { Photo } from "@/components/ui/Photo";
-import { DOWNLOADS, KONEKTA } from "@/lib/content";
+import { KONEKTA } from "@/lib/content";
 import { PHOTO } from "@/lib/images";
 
 /** Stylised cover of the proposal document. */
@@ -45,16 +45,16 @@ export function ProposalBand() {
             Read the full proposal — <em className="text-leaf-300 italic">every assumption, risk and number.</em>
           </h2>
           <p className="mt-5 max-w-xl text-lg text-forest-200">
-            Eleven pages covering the circular design, offline-first sensing, Tulun VIEM, unit economics, rollout,
-            failure modes and how we adapt when constraints change.
+            The circular design, offline-first sensing, Tulun VIEM, unit economics, rollout, failure modes and how we
+            adapt when constraints change.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <ButtonAnchor href={DOWNLOADS.proposal.href} download variant="accent" size="lg">
-              <Download className="size-5" aria-hidden="true" /> Download proposal
-            </ButtonAnchor>
-            <ButtonAnchor href={DOWNLOADS.profile.href} download variant="ghost-light" size="lg">
+            <ViewPdfButton docKey="proposal" variant="accent" size="lg">
+              <BookOpen className="size-5" aria-hidden="true" /> Read the proposal
+            </ViewPdfButton>
+            <ViewPdfButton docKey="profile" variant="ghost-light" size="lg">
               <FileText className="size-5" aria-hidden="true" /> Company profile
-            </ButtonAnchor>
+            </ViewPdfButton>
           </div>
           <Link
             href="/proposal"

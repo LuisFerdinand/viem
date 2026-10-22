@@ -1,16 +1,18 @@
-import { CalendarDays, Download, ExternalLink, FileText, Trophy } from "lucide-react";
+import { BookOpen, CalendarDays, ExternalLink, FileText, Trophy } from "lucide-react";
 import type { Metadata } from "next";
 import { PageHero } from "@/components/site/PageHero";
+import { ViewPdfButton } from "@/components/site/PdfViewer";
 import { ProposalCover } from "@/components/site/ProposalBand";
 import { Accent, Section, SectionHeading } from "@/components/site/Section";
 import { ButtonAnchor } from "@/components/ui/Button";
-import { DOWNLOADS, JUDGING, KONEKTA } from "@/lib/content";
+import { JUDGING, KONEKTA } from "@/lib/content";
 import { PHOTO } from "@/lib/images";
+import { getSiteContent } from "@/lib/settings";
 
 export const metadata: Metadata = {
   title: "Proposal",
   description:
-    "Download the VIEM Konekta Farms proposal for the Vorakai Konekta Challenge 2026 and the VIEM company profile.",
+    "Read the VIEM Konekta Farms proposal for the Vorakai Konekta Challenge 2026 and the VIEM company profile.",
 };
 
 const CONTENTS = [
@@ -29,7 +31,9 @@ const CONTENTS = [
   "Team",
 ];
 
-export default function ProposalPage() {
+export default async function ProposalPage() {
+  const { documents } = await getSiteContent();
+
   return (
     <>
       <PageHero
@@ -39,23 +43,23 @@ export default function ProposalPage() {
             Read the <em className="text-leaf-300 italic">full proposal</em>
           </>
         }
-        lead="VIEM Konekta Farms: connected circular hydroponic & aquaponic hubs for Timor-Leste. Download the PDF, or preview it right here."
+        lead="VIEM Konekta Farms: connected circular hydroponic & aquaponic hubs for Timor-Leste. Read it right here on the page."
         image={PHOTO.forestCanopy}
       >
-        <ButtonAnchor href={DOWNLOADS.proposal.href} download variant="accent" size="lg">
-          <Download className="size-5" aria-hidden="true" /> Download proposal (PDF)
-        </ButtonAnchor>
-        <ButtonAnchor href={DOWNLOADS.profile.href} download variant="ghost-light" size="lg">
-          <FileText className="size-5" aria-hidden="true" /> Company profile (PDF)
-        </ButtonAnchor>
+        <ViewPdfButton docKey="proposal" variant="accent" size="lg">
+          <BookOpen className="size-5" aria-hidden="true" /> Read the proposal
+        </ViewPdfButton>
+        <ViewPdfButton docKey="profile" variant="ghost-light" size="lg">
+          <FileText className="size-5" aria-hidden="true" /> Company profile
+        </ViewPdfButton>
       </PageHero>
 
       <Section labelledBy="downloads-heading">
         <div className="container-page">
           <h2 id="downloads-heading" className="sr-only">Downloads</h2>
           <ul className="grid gap-6 lg:grid-cols-2">
-            {[DOWNLOADS.proposal, DOWNLOADS.profile].map((d, i) => (
-              <li key={d.href} className="reveal flex flex-col gap-6 rounded-3xl border border-forest-100 bg-forest-50 p-6 sm:flex-row md:p-8">
+            {[documents.proposal, documents.profile].map((d, i) => (
+              <li key={d.key} className="reveal flex flex-col gap-6 rounded-3xl border border-forest-100 bg-forest-50 p-6 sm:flex-row md:p-8">
                 {i === 0 ? (
                   <ProposalCover className="mx-auto w-40 shrink-0 sm:mx-0" />
                 ) : (
@@ -73,9 +77,9 @@ export default function ProposalPage() {
                   <h3 className="mt-2 font-display text-2xl font-medium text-forest-900">{d.title}</h3>
                   <p className="mt-3 text-sm leading-relaxed text-muted">{d.description}</p>
                   <div className="mt-auto flex flex-wrap gap-2 pt-6">
-                    <ButtonAnchor href={d.href} download>
-                      <Download className="size-4" aria-hidden="true" /> Download
-                    </ButtonAnchor>
+                    <ViewPdfButton docKey={d.key}>
+                      <BookOpen className="size-4" aria-hidden="true" /> Read now
+                    </ViewPdfButton>
                     <ButtonAnchor href={d.href} target="_blank" rel="noopener noreferrer" variant="secondary">
                       <ExternalLink className="size-4" aria-hidden="true" /> Open in new tab
                     </ButtonAnchor>
@@ -100,26 +104,22 @@ export default function ProposalPage() {
               ))}
             </ol>
           </div>
-          <div className="reveal overflow-hidden rounded-3xl bg-white shadow-soft">
-            <div className="flex items-center justify-between border-b border-forest-100 px-5 py-3 text-sm">
-              <span className="font-medium text-forest-800">Preview · VIEM-Konekta-Farms-Proposal.pdf</span>
-              <a href={DOWNLOADS.proposal.href} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 font-medium text-forest-600 hover:underline">
-                Full screen <ExternalLink className="size-3.5" aria-hidden="true" />
-              </a>
+          <div className="reveal flex flex-col items-center justify-center gap-8 rounded-3xl bg-white p-8 text-center shadow-soft sm:p-12">
+            <ProposalCover className="w-48" />
+            <div>
+              <h3 className="font-display text-3xl font-medium text-forest-900">Read it without leaving the page</h3>
+              <p className="mx-auto mt-3 max-w-md text-sm leading-relaxed text-muted">
+                The full proposal opens in a reader that works on phones too. {documents.proposal.meta}.
+              </p>
             </div>
-            <iframe
-              src={`${DOWNLOADS.proposal.href}#view=FitH`}
-              title="VIEM Konekta Farms proposal (PDF preview)"
-              loading="lazy"
-              className="h-[70vh] min-h-[32rem] w-full bg-forest-50"
-            />
-            <p className="border-t border-forest-100 px-5 py-3 text-xs text-muted">
-              Preview not showing on your device?{" "}
-              <a href={DOWNLOADS.proposal.href} download className="font-semibold text-forest-700 underline underline-offset-2">
-                Download the PDF
-              </a>{" "}
-              instead.
-            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <ViewPdfButton docKey="proposal" size="lg">
+                <BookOpen className="size-5" aria-hidden="true" /> Open the proposal
+              </ViewPdfButton>
+              <ButtonAnchor href={documents.proposal.href} target="_blank" rel="noopener noreferrer" variant="secondary" size="lg">
+                <ExternalLink className="size-4" aria-hidden="true" /> Open in new tab
+              </ButtonAnchor>
+            </div>
           </div>
         </div>
       </Section>

@@ -24,6 +24,16 @@ import type { Preset } from "../domain";
 const createdAt = () =>
   timestamp("created_at", { withTimezone: true, mode: "date" }).notNull().defaultNow();
 
+/**
+ * Content the admin panel controls: the uploaded PDFs and the intro video link.
+ * One row per setting; `value` holds a small JSON object (see lib/settings.ts).
+ */
+export const siteSettings = pgTable("site_settings", {
+  key: text("key").primaryKey(),
+  value: jsonb("value").$type<Record<string, unknown>>().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" }).notNull().defaultNow(),
+});
+
 export const hubs = pgTable("hubs", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
