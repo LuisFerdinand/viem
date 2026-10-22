@@ -2,7 +2,7 @@ import {
   ArrowRight,
   BatteryCharging,
   Cpu,
-  Download,
+  BookOpen,
   Droplets,
   Fish,
   GraduationCap,
@@ -27,7 +27,9 @@ import {
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
+import { IntroVideo } from "@/components/site/IntroVideo";
 import { LoopDiagram } from "@/components/site/LoopDiagram";
+import { ViewPdfButton } from "@/components/site/PdfViewer";
 import { ProposalBand } from "@/components/site/ProposalBand";
 import { Accent, Section, SectionHeading } from "@/components/site/Section";
 import { TeamGrid } from "@/components/site/TeamGrid";
@@ -37,7 +39,6 @@ import { Photo } from "@/components/ui/Photo";
 import {
   APPROACH,
   CONTACT,
-  DOWNLOADS,
   HEADLINE_STATS,
   IMPACT,
   KONEKTA,
@@ -47,17 +48,21 @@ import {
   SYSTEMS,
 } from "@/lib/content";
 import { BRAND, PHOTO } from "@/lib/images";
+import { getSiteContent } from "@/lib/settings";
 
 const PROBLEM_ICONS: LucideIcon[] = [Wheat, Sprout, Droplets, Recycle];
 const SYSTEM_IMAGES = [PHOTO.fishPond, PHOTO.lettuceRows, PHOTO.compostBoxes];
 const SENSING_ICONS: LucideIcon[] = [Cpu, Radio, SatelliteDish, LayoutDashboard];
 const IMPACT_ICONS: LucideIcon[] = [HandCoins, School, GraduationCap, Recycle, Sun];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const { introVideoId } = await getSiteContent();
+
   return (
     <>
       <Hero />
       <StatsStrip />
+      {introVideoId && <IntroVideoSection videoId={introVideoId} />}
 
       {/* About / approach */}
       <Section labelledBy="about-heading">
@@ -446,9 +451,9 @@ function Hero() {
             Fish feed the plants, waste feeds the fish — and the suco&apos;s new connection keeps the whole loop alive.
           </p>
           <div className="mt-9 flex flex-wrap gap-3">
-            <ButtonAnchor href={DOWNLOADS.proposal.href} download variant="accent" size="lg">
-              <Download className="size-5" aria-hidden="true" /> Download proposal
-            </ButtonAnchor>
+            <ViewPdfButton docKey="proposal" variant="accent" size="lg">
+              <BookOpen className="size-5" aria-hidden="true" /> Read the proposal
+            </ViewPdfButton>
             <ButtonLink href="/dashboard" variant="ghost-light" size="lg">
               <LayoutDashboard className="size-5" aria-hidden="true" /> Explore the live dashboard
             </ButtonLink>
@@ -508,6 +513,35 @@ function Hero() {
             </p>
             <p className="mt-2 text-sm font-medium">Oksijéniu tun. Haree pompa ar agora.</p>
             <p className="mt-1 text-xs text-muted italic">Oxygen low. Check the air pump now.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function IntroVideoSection({ videoId }: { videoId: string }) {
+  return (
+    <section aria-labelledby="intro-heading" className="relative pt-20 md:pt-28">
+      <div className="container-page">
+        <div className="relative isolate overflow-hidden rounded-[2rem] bg-forest-950 p-6 text-white sm:p-10 lg:p-14">
+          <div aria-hidden="true" className="absolute -top-24 -left-16 -z-10 size-96 rounded-full bg-forest-600/30 blur-3xl" />
+          <div aria-hidden="true" className="absolute -right-24 -bottom-32 -z-10 size-96 rounded-full bg-leaf-500/15 blur-3xl" />
+          <div className="grid items-center gap-10 lg:grid-cols-[0.8fr_1.5fr] lg:gap-14">
+            <SectionHeading
+              id="intro-heading"
+              tone="dark"
+              eyebrow="Meet VIEM"
+              title={
+                <>
+                  Who we are, <Accent tone="dark">in our own words</Accent>
+                </>
+              }
+              lead="A short introduction to the team and the connected, circular farms we are building with suco cooperatives in Timor-Leste."
+            />
+            <div className="reveal">
+              <IntroVideo videoId={videoId} title="VIEM company introduction" />
+            </div>
           </div>
         </div>
       </div>

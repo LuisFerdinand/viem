@@ -29,6 +29,13 @@
       "when": 1792076085401,
       "tag": "0003_drop_unit_site_columns",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1792658332442,
+      "tag": "0004_site_settings",
+      "breakpoints": true
     }
   ]
 }

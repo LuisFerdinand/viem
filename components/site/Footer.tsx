@@ -1,7 +1,8 @@
-import { Download, Globe, LayoutDashboard, Mail, MessageCircle } from "lucide-react";
+import { FileText, Globe, LayoutDashboard, Mail, MessageCircle } from "lucide-react";
 import Link from "next/link";
+import { ViewPdfLink } from "@/components/site/PdfViewer";
 import { Logo } from "@/components/ui/Logo";
-import { CONTACT, DOWNLOADS, KONEKTA, NAV, QUOTE } from "@/lib/content";
+import { CONTACT, KONEKTA, NAV, QUOTE } from "@/lib/content";
 
 export function Footer() {
   return (
@@ -60,10 +61,10 @@ export function Footer() {
               </a>
             </li>
             <li>
-              <a href={DOWNLOADS.proposal.href} download className="inline-flex items-center gap-2.5 text-forest-200 hover:text-white">
-                <Download className="size-4 text-leaf-400" aria-hidden="true" />
-                Download the proposal (PDF)
-              </a>
+              <ViewPdfLink docKey="proposal" className="inline-flex items-center gap-2.5 text-forest-200 hover:text-white">
+                <FileText className="size-4 text-leaf-400" aria-hidden="true" />
+                Read the proposal (PDF)
+              </ViewPdfLink>
             </li>
           </ul>
         </div>

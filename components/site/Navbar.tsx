@@ -1,12 +1,13 @@
 "use client";
 
-import { ArrowUpRight, Download, LayoutDashboard, Menu, X } from "lucide-react";
+import { ArrowUpRight, FileText, LayoutDashboard, Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { ButtonAnchor, ButtonLink } from "@/components/ui/Button";
+import { ButtonLink } from "@/components/ui/Button";
 import { Logo } from "@/components/ui/Logo";
-import { DOWNLOADS, NAV } from "@/lib/content";
+import { ViewPdfButton } from "@/components/site/PdfViewer";
+import { NAV } from "@/lib/content";
 import { cn } from "@/lib/utils";
 
 function subscribeScroll(cb: () => void) {
@@ -89,16 +90,10 @@ export function Navbar() {
             <LayoutDashboard className="size-4" aria-hidden="true" />
             Live demo
           </ButtonLink>
-          <ButtonAnchor
-            href={DOWNLOADS.proposal.href}
-            download
-            variant={solid ? "primary" : "accent"}
-            size="sm"
-            className="h-10"
-          >
-            <Download className="size-4" aria-hidden="true" />
-            Proposal PDF
-          </ButtonAnchor>
+          <ViewPdfButton docKey="proposal" variant={solid ? "primary" : "accent"} size="sm" className="h-10">
+            <FileText className="size-4" aria-hidden="true" />
+            View proposal
+          </ViewPdfButton>
         </div>
 
         <button
@@ -137,10 +132,10 @@ export function Navbar() {
           ))}
         </ul>
         <div className="container-page flex flex-col gap-3 pb-10">
-          <ButtonAnchor href={DOWNLOADS.proposal.href} download variant="primary" size="lg">
-            <Download className="size-5" aria-hidden="true" />
-            Download proposal (PDF)
-          </ButtonAnchor>
+          <ViewPdfButton docKey="proposal" variant="primary" size="lg" onOpen={() => setOpen(false)}>
+            <FileText className="size-5" aria-hidden="true" />
+            View proposal (PDF)
+          </ViewPdfButton>
           <ButtonLink href="/dashboard" variant="secondary" size="lg" onClick={() => setOpen(false)}>
             <LayoutDashboard className="size-5" aria-hidden="true" />
             Open the live dashboard demo

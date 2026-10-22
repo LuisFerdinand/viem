@@ -3,7 +3,7 @@
 Company profile for **VIEM (Visionary Innovation for Environmental Management)** and a working demo of the
 VIEM Hub dashboard, built for the **Vorakai Konekta Challenge 2026** (AI & Data track).
 
-- **Website** — Home, About, Solution, Impact, Proposal (with PDF downloads and an in-page preview).
+- **Website** — Home, About, Solution, Impact, Proposal. PDFs open in an on-site viewer (modal) instead of downloading, and the home page shows a company introduction video.
 - **Dashboard demo** (`/dashboard`) — live sensors, controls, automation, Tetum-first alerts, harvest & buy-back,
   Buku Besar, preset master data, the Tulun VIEM assistant, and an activity log.
 
@@ -119,6 +119,26 @@ automatically so the demo database stays small. *Activity & settings → Reset d
 
 > The dashboard has no login because it is a public demo — anyone with the link can change demo data.
 > Add authentication before connecting it to real equipment.
+
+## Admin panel (`/admin`)
+
+A password-protected page for the content that changes without a code deploy:
+
+- **Introduction video** — paste a YouTube link; it shows on the home page under the headline numbers (hidden when empty).
+  The poster is the video's own YouTube thumbnail, so a custom thumbnail set in YouTube Studio appears automatically.
+- **Proposal PDF / Company profile PDF** — upload a replacement; every "Read the proposal" button opens it in the viewer.
+  "Use bundled file" falls back to `public/downloads/`.
+
+Setup:
+
+1. `ADMIN_PASSWORD` — at least 8 characters, in `.env.local` and in the Vercel project's environment variables.
+2. `npm run db:migrate` — adds the `site_settings` table.
+3. `BLOB_READ_WRITE_TOKEN` — create a Blob store in Vercel (Storage → Blob) and connect it to the project, or run
+   `vercel env pull`. PDFs go from the browser straight to Blob (serverless functions reject bodies over 4.5 MB).
+
+Without the table or token the site keeps working with the bundled PDFs and no video. The viewer is pdf.js
+(`components/site/PdfReader.tsx`), loaded only when a document is opened, so it also works on phones where an
+`<iframe>` PDF does not.
 
 ## Content notes
 
